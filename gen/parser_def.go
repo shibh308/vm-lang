@@ -2,10 +2,11 @@ package main
 
 type ResultType int
 type StmtFlag int
-type EqualFlag int
-type CompFlag int
-type ExprFlag int
-type TermFlag int
+type StmthFlag int
+type EqualOp int
+type CompOp int
+type ExprOp int
+type TermOp int
 type AssignFlag int
 type RvalFlag int
 
@@ -16,32 +17,37 @@ const (
 	typeVoid
 )
 const (
-	flagEqual StmtFlag = iota
+	flagSingleStmth StmthFlag = iota
+	flagFor
+	flagWhile
+)
+const (
+	flagSingleStmt StmtFlag = iota
 	flagReturn
 	flagBreak
 	flagContinue
 )
 const (
-	flagSingleEqual EqualFlag = iota
-	flagEq
-	flagNeq
+	opSingleEqual EqualOp = iota
+	opEq
+	opNeq
 )
 const (
-	flagSingleComp CompFlag = iota
-	flagGr
-	flagLe
-	flagGrEq
-	flagLeEq
+	opSingleComp CompOp = iota
+	opGr
+	opLe
+	opGrEq
+	opLeEq
 )
 const (
-	flagSingleExpr ExprFlag = iota
-	flagPlus
-	flagMinus
+	opSingleExpr ExprOp = iota
+	opPlus
+	opMinus
 )
 const (
-	flagSingleTerm TermFlag = iota
-	flagMul
-	flagDiv
+	opSingleTerm TermOp = iota
+	opMul
+	opDiv
 )
 const (
 	flagAssign AssignFlag = iota
@@ -64,9 +70,9 @@ const (
 	flagRev
 )
 
-type PNode interface {
-	parseTokens(*[]Token, int) (int, bool)
-}
+const ignoreSize = 10
+
+type PNode interface{}
 
 type RootNode struct{ prog *ProgNode }
 type ProgNode struct{ childs []PNode }
@@ -75,77 +81,70 @@ type FdefNode struct {
 	vars    *VarsNode
 	content *BlockNode
 }
-type BlockNode struct{ childs []PNode }
-type StmthNode struct{ childs []PNode }
-type StmtNode struct{ childs []PNode }
+type BlockNode struct{ stmts []*StmthNode }
+type StmthNode struct {
+	stmt *StmtNode
+	flag StmthFlag
+}
+type StmtNode struct {
+	content *EqualNode
+	flag    StmtFlag
+}
 type EqualNode struct {
 	childs []PNode
-	result ResultType
+	ops    []EqualOp
 }
 type CompNode struct {
 	childs []PNode
-	result ResultType
+	ops    []CompOp
 }
 type ExprNode struct {
 	childs []PNode
-	result ResultType
+	ops    []ExprOp
 }
 type TermNode struct {
 	childs []PNode
-	result ResultType
+	ops    []TermOp
 }
 type FactNode struct {
 	childs []PNode
-	result ResultType
 }
 type RvalNode struct {
 	childs []PNode
-	result ResultType
 }
 type CallNode struct {
 	childs []PNode
-	result ResultType
 }
 type IfNode struct {
 	childs []PNode
-	result ResultType
 }
 type ForNode struct{ childs []PNode }
 type WhileNode struct{ childs []PNode }
 type VarsNode struct {
 	args []*VarNode
 }
-type RetNode struct {
-	childs []PNode
-	result ResultType
-}
 type VarNode struct {
-	name   string
-	isRef  bool
-	result ResultType
+	name  string
+	isRef bool
 }
 type NumNode struct {
 	childs []PNode
 	num    int
-	result ResultType
 }
 type StrNode struct {
 	childs []PNode
 	str    string
-	result ResultType
 }
 type CharNode struct {
 	childs []PNode
 	char   uint8
-	result ResultType
 }
 type AssignNode struct {
 	childs []PNode
-	result ResultType
 }
 
-/* TODO struct */
+/* TODO: struct */
 // type StructNode struct{ Node }
 // type DefNode struct{ Node ResultType }
 
-/* TODO seq */
+/* TODO: seq */

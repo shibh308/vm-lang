@@ -6,79 +6,76 @@ import (
 	"reflect"
 )
 
-func (p RootNode) parseTokens(tokens []Token) error {
+func makeSyntaxTree(tokens []Token) (*RootNode, error) {
+	p := new(RootNode)
 	tokensLen := len(tokens)
-	for i := 0; i < 10; i++ {
+	for i := 0; i < ignoreSize; i++ {
 		tokens = append(tokens, TokenIgnore{})
 	}
-	pr := new(ProgNode)
-	if i, err := pr.parseTokens(&tokens, 0); err || (i != tokensLen) {
-		if err {
-			msg := "parse Error at Token %d, %s\n"
-			return fmt.Errorf(msg, i+1, reflect.TypeOf(tokens[i]))
-		}
+	node, _i := makeProgNode(&tokens, 0)
+	if node == nil || (_i != tokensLen) {
+		msg := "parse error at Token %d, %s\n"
+		return nil, fmt.Errorf(msg, _i+1, reflect.TypeOf(tokens[_i]))
 	}
-	return nil
+	p.prog = node
+	return p, nil
 }
 
-func (p ProgNode) parseTokens(tokens *[]Token, i int) (int, bool) {
-	var fdefNode = new(FdefNode)
-	if _i, err := fdefNode.parseTokens(tokens, i); err {
-		return _i, true
+func makeProgNode(tokens *[]Token, i int) (*ProgNode, int) {
+	p := new(ProgNode)
+	if node, _i := makeFdefNode(tokens, i); node == nil {
+		return nil, _i
 	} else {
 		i = _i
-		var node PNode = fdefNode
 		p.childs = append(p.childs, node)
 	}
 
-	for i < len(*tokens) {
-		fdefNode = new(FdefNode)
-		if _i, err := fdefNode.parseTokens(tokens, i); err {
-			return _i, false
+	for i < len(*tokens)-ignoreSize {
+		if node, _i := makeFdefNode(tokens, i); node == nil {
+			return p, i
 		} else {
 			i = _i
-			var node PNode = fdefNode
+			// var node PNode = _node
 			p.childs = append(p.childs, node)
 		}
 	}
-	return i, false
+	return p, i
 }
 
-func (p FdefNode) parseTokens(tokens *[]Token, i int) (int, bool) {
+func makeFdefNode(tokens *[]Token, i int) (*FdefNode, int) {
+	p := new(FdefNode)
 	switch v := (*tokens)[i].(type) {
 	case TokenVar:
 		p.name = v.name
 		i++
 	default:
-		return i, true
+		return nil, i
 	}
 
-	var varsNode = new(VarsNode)
-	if _i, err := varsNode.parseTokens(tokens, i); err {
-		fmt.Println(_i)
-		return _i, true
+	if node, _i := makeVarsNode(tokens, i); node == nil {
+		return nil, _i
 	} else {
 		i = _i
-		p.vars = varsNode
+		p.vars = node
 	}
 
-	var blockNode = new(BlockNode)
-	if _i, err := blockNode.parseTokens(tokens, i); err {
-		return _i, true
+	if node, _i := makeBlockNode(tokens, i); node == nil {
+		return nil, _i
 	} else {
 		i = _i
-		p.content = blockNode
+		p.content = node
 	}
 
-	return i, false
+	return p, i
 }
 
-func (p VarsNode) parseTokens(tokens *[]Token, i int) (int, bool) {
+func makeVarsNode(tokens *[]Token, i int) (*VarsNode, int) {
+	p := new(VarsNode)
 	switch (*tokens)[i].(type) {
 	case TokenOpenBr:
 		i++
 	default:
-		return i, true
+		return nil, i
 	}
 
 	firstArg := true
@@ -97,12 +94,11 @@ func (p VarsNode) parseTokens(tokens *[]Token, i int) (int, bool) {
 			firstArg = false
 		}
 
-		var varNode = new(VarNode)
-		if _i, err := varNode.parseTokens(tokens, i); err {
+		if node, _i := makeVarNode(tokens, i); node == nil {
 			break
 		} else {
 			i = _i
-			p.args = append(p.args, varNode)
+			p.args = append(p.args, node)
 		}
 	}
 
@@ -110,36 +106,223 @@ func (p VarsNode) parseTokens(tokens *[]Token, i int) (int, bool) {
 	case TokenCloseBr:
 		i++
 	default:
-		return i, true
+		return nil, i
 	}
-	return i, false
+	return p, i
 }
 
-func (p VarNode) parseTokens(tokens *[]Token, i int) (int, bool) {
-	varNode := new(VarNode)
+func makeVarNode(tokens *[]Token, i int) (*VarNode, int) {
+	p := new(VarNode)
 	switch v := (*tokens)[i].(type) {
 	case TokenVar:
 		i++
-		varNode.name = v.name
+		p.name = v.name
 	default:
-		return i, true
+		return nil, i
 	}
 	switch (*tokens)[i].(type) {
 	case TokenAnd:
 		i++
-		varNode.isRef = true
+		p.isRef = true
 	}
-	return i, false
+	return p, i
 }
 
-func (p BlockNode) parseTokens(tokens *[]Token, i int) (int, bool) {
-	return i, true
+func makeBlockNode(tokens *[]Token, i int) (*BlockNode, int) {
+	p := new(BlockNode)
+	switch (*tokens)[i].(type) {
+	case TokenOpenWBr:
+		i++
+		for {
+			if node, _i := makeStmthNode(tokens, i); node == nil {
+				break
+			} else {
+				i = _i
+				p.stmts = append(p.stmts, node)
+			}
+		}
+		if len(p.stmts) == 0 {
+			return nil, i
+		}
+		switch (*tokens)[i].(type) {
+		case TokenCloseWBr:
+			i++
+		default:
+			return nil, i
+		}
+	default:
+		if node, _i := makeStmthNode(tokens, i); node == nil {
+			return nil, _i
+		} else {
+			i = _i
+			p.stmts = []*StmthNode{node}
+		}
+	}
+	return p, i
+}
+
+func makeStmthNode(tokens *[]Token, i int) (*StmthNode, int) {
+	p := new(StmthNode)
+	if node, _i := makeStmtNode(tokens, i); node != nil {
+		i = _i
+		p.stmt = node
+		p.flag = flagSingleStmth
+		switch (*tokens)[i].(type) {
+		case TokenSemiColon:
+			i++
+			return p, i
+		default:
+			return nil, i
+		}
+	}
+	/* TODO: for, while */
+	return nil, i
+}
+
+func makeStmtNode(tokens *[]Token, i int) (*StmtNode, int) {
+	p := new(StmtNode)
+	p.flag = flagSingleStmt
+	switch (*tokens)[i].(type) {
+	case TokenReturn:
+		i++
+		p.flag = flagReturn
+	}
+	if node, _i := makeEqualNode(tokens, i); node != nil {
+		i = _i
+		p.content = node
+		return p, i
+	}
+	/* TODO: break, continue */
+	return nil, i
+}
+
+func makeEqualNode(tokens *[]Token, i int) (*EqualNode, int) {
+	p := new(EqualNode)
+	if node, _i := makeCompNode(tokens, i); node == nil {
+		return nil, _i
+	} else {
+		i = _i
+		p.childs = append(p.childs, node)
+	}
+	for {
+		switch (*tokens)[i].(type) {
+		case TokenDEqual:
+			i++
+			p.ops = append(p.ops, opEq)
+		case TokenNEqual:
+			i++
+			p.ops = append(p.ops, opNeq)
+		default:
+			return p, i
+		}
+		if node, _i := makeCompNode(tokens, i); node == nil {
+			return nil, _i
+		} else {
+			i = _i
+			p.childs = append(p.childs, node)
+		}
+	}
+}
+
+func makeCompNode(tokens *[]Token, i int) (*CompNode, int) {
+	p := new(CompNode)
+	if node, _i := makeExprNode(tokens, i); node == nil {
+		return nil, _i
+	} else {
+		i = _i
+		p.childs = append(p.childs, node)
+	}
+	for {
+		switch (*tokens)[i].(type) {
+		case TokenLe:
+			i++
+			p.ops = append(p.ops, opLe)
+		case TokenLeEqual:
+			i++
+			p.ops = append(p.ops, opLeEq)
+		case TokenGr:
+			i++
+			p.ops = append(p.ops, opGr)
+		case TokenGrEqual:
+			i++
+			p.ops = append(p.ops, opGrEq)
+		default:
+			return p, i
+		}
+		if node, _i := makeExprNode(tokens, i); node == nil {
+			return nil, _i
+		} else {
+			i = _i
+			p.childs = append(p.childs, node)
+		}
+	}
+}
+
+func makeExprNode(tokens *[]Token, i int) (*ExprNode, int) {
+	p := new(ExprNode)
+	if node, _i := makeTermNode(tokens, i); node == nil {
+		return nil, _i
+	} else {
+		i = _i
+		p.childs = append(p.childs, node)
+	}
+	for {
+		switch (*tokens)[i].(type) {
+		case TokenPlus:
+			i++
+			p.ops = append(p.ops, opPlus)
+		case TokenMinus:
+			i++
+			p.ops = append(p.ops, opMinus)
+		default:
+			return p, i
+		}
+		if node, _i := makeTermNode(tokens, i); node == nil {
+			return nil, _i
+		} else {
+			i = _i
+			p.childs = append(p.childs, node)
+		}
+	}
+}
+
+func makeTermNode(tokens *[]Token, i int) (*TermNode, int) {
+	p := new(TermNode)
+	if node, _i := makeFactNode(tokens, i); node == nil {
+		return nil, _i
+	} else {
+		i = _i
+		p.childs = append(p.childs, node)
+	}
+	for {
+		switch (*tokens)[i].(type) {
+		case TokenAst:
+			i++
+			p.ops = append(p.ops, opMul)
+		case TokenSlash:
+			i++
+			p.ops = append(p.ops, opDiv)
+		default:
+			return p, i
+		}
+		if node, _i := makeFactNode(tokens, i); node == nil {
+			return nil, _i
+		} else {
+			i = _i
+			p.childs = append(p.childs, node)
+		}
+	}
+}
+func makeFactNode(tokens *[]Token, i int) (*FactNode, int) {
+	p := new(FactNode)
+	return p, 0
 }
 
 func parseTokenSlice(tokens []Token) {
-	root := RootNode{}
-	if err := root.parseTokens(tokens); err != nil {
+	root, err := makeSyntaxTree(tokens)
+	if err != nil {
 		_, _ = fmt.Fprint(os.Stderr, err)
 		os.Exit(1)
 	}
+	fmt.Println(root)
 }
