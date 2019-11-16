@@ -23,6 +23,7 @@ type TokenSlash struct{}
 type TokenSemiColon struct{}
 type TokenColon struct{}
 type TokenAst struct{}
+type TokenAnd struct{}
 type TokenPlusAssign struct{}
 type TokenMinusAssign struct{}
 type TokenMulAssign struct{}
@@ -114,6 +115,9 @@ func matchString(s *string, i *int) (Token, error) {
 	case strings.HasPrefix((*s)[*i:], `*`):
 		*i += 1
 		return TokenAst{}, nil
+	case strings.HasPrefix((*s)[*i:], `&`):
+		*i += 1
+		return TokenAnd{}, nil
 	case strings.HasPrefix((*s)[*i:], `true`):
 		*i += 4
 		return TokenTrue{}, nil
@@ -195,11 +199,11 @@ func matchString(s *string, i *int) (Token, error) {
 		return TokenIgnore{}, nil
 	}
 
-	msg := `parse error at %d, line %d, "%s"`
+	msg := `parse error at %d, line %d, "%s\n"`
 	lineNum := strings.Count((*s)[:*i], "\n") + 1
 	l := strings.LastIndex((*s)[:*i], "\n") + 1
 	r := *i + strings.Index((*s)[*i:], "\n")
-	return TokenIgnore{}, fmt.Errorf(msg, *i, lineNum, (*s)[l:r])
+	return TokenIgnore{}, fmt.Errorf(msg, *i, lineNum, strings.TrimSpace((*s)[l:r]))
 }
 
 func lexString(s string) []Token {
@@ -208,7 +212,7 @@ func lexString(s string) []Token {
 	for i < len(s) {
 		token, err := matchString(&s, &i)
 		if err != nil {
-			fmt.Println(err)
+			_, _ = fmt.Fprint(os.Stderr, err)
 			os.Exit(1)
 		}
 		if reflect.TypeOf(token) != reflect.TypeOf(TokenIgnore{}) {
