@@ -7,7 +7,7 @@ type EqualOp int
 type CompOp int
 type ExprOp int
 type TermOp int
-type AssignFlag int
+type AssignOp int
 type RvalFlag int
 
 const (
@@ -50,15 +50,15 @@ const (
 	opDiv
 )
 const (
-	flagAssign AssignFlag = iota
-	flagPlusAssign
-	flagMinusAssign
-	flagMulAssign
-	flagDivAssign
+	opAssign AssignOp = iota
+	opPlusAssign
+	opMinusAssign
+	opMulAssign
+	opDivAssign
 )
 const (
 	flagCall RvalFlag = iota
-	flagVarh
+	flagVar
 	flagNum
 	flagStr
 	flagChar
@@ -91,26 +91,29 @@ type StmtNode struct {
 	flag    StmtFlag
 }
 type EqualNode struct {
-	childs []PNode
+	childs []*CompNode
 	ops    []EqualOp
 }
 type CompNode struct {
-	childs []PNode
+	childs []*ExprNode
 	ops    []CompOp
 }
 type ExprNode struct {
-	childs []PNode
+	childs []*TermNode
 	ops    []ExprOp
 }
 type TermNode struct {
-	childs []PNode
+	childs []*FactNode
 	ops    []TermOp
 }
 type FactNode struct {
-	childs []PNode
+	childs []*VarNode
+	ops    []AssignOp
+	rval   *RvalNode
 }
 type RvalNode struct {
-	childs []PNode
+	flag    RvalFlag
+	content PNode
 }
 type CallNode struct {
 	childs []PNode
@@ -128,8 +131,7 @@ type VarNode struct {
 	isRef bool
 }
 type NumNode struct {
-	childs []PNode
-	num    int
+	num int
 }
 type StrNode struct {
 	childs []PNode
@@ -138,9 +140,6 @@ type StrNode struct {
 type CharNode struct {
 	childs []PNode
 	char   uint8
-}
-type AssignNode struct {
-	childs []PNode
 }
 
 /* TODO: struct */

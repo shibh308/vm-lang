@@ -35,7 +35,6 @@ func makeProgNode(tokens *[]Token, i int) (*ProgNode, int) {
 			return p, i
 		} else {
 			i = _i
-			// var node PNode = _node
 			p.childs = append(p.childs, node)
 		}
 	}
@@ -315,7 +314,62 @@ func makeTermNode(tokens *[]Token, i int) (*TermNode, int) {
 }
 func makeFactNode(tokens *[]Token, i int) (*FactNode, int) {
 	p := new(FactNode)
-	return p, 0
+	for {
+		if node, _i := makeVarNode(tokens, i); node == nil {
+			break
+		} else {
+			i = _i
+			p.childs = append(p.childs, node)
+		}
+		switch (*tokens)[i].(type) {
+		case TokenEqual:
+			i++
+			p.ops = append(p.ops, opAssign)
+		case TokenPlusAssign:
+			i++
+			p.ops = append(p.ops, opPlusAssign)
+		case TokenMinusAssign:
+			i++
+			p.ops = append(p.ops, opMinusAssign)
+		case TokenMulAssign:
+			i++
+			p.ops = append(p.ops, opMulAssign)
+		case TokenDivAssign:
+			i++
+			p.ops = append(p.ops, opDivAssign)
+		default:
+			return nil, i
+		}
+	}
+	if node, _i := makeRvalNode(tokens, i); node == nil {
+		return nil, 0
+	} else {
+		i = _i
+		p.rval = node
+	}
+	return p, i
+}
+
+func makeRvalNode(tokens *[]Token, i int) (*RvalNode, int) {
+	/* TODO: call, str, char, (eq), if, inc, dec, not, true, false */
+	p := new(RvalNode)
+	if node, _i := makeVarNode(tokens, i); node != nil {
+		i = _i
+		p.flag = flagVar
+		p.content = node
+	} else {
+		switch v := (*tokens)[i].(type) {
+		case TokenNum:
+			i++
+			node := new(NumNode)
+			node.num = v.num
+			p.flag = flagNum
+			p.content = node
+		default:
+			return nil, i
+		}
+	}
+	return p, i
 }
 
 func parseTokenSlice(tokens []Token) {
