@@ -18,7 +18,7 @@ main(){
 }
 `
 	tokens := lexString(strings.TrimSpace(s1))
-	for _, token := range tokens {
-		fmt.Println(reflect.TypeOf(token))
+	for i, token := range tokens {
+		fmt.Printf("%03d: %s\n", i+1, reflect.TypeOf(token))
 	}
 }
