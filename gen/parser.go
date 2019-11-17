@@ -318,27 +318,30 @@ func makeFactNode(tokens *[]Token, i int) (*FactNode, int) {
 		if node, _i := makeVarNode(tokens, i); node == nil {
 			break
 		} else {
-			i = _i
+			flag := true
+			switch (*tokens)[_i].(type) {
+			case TokenEqual:
+				i = _i + 1
+				p.ops = append(p.ops, opAssign)
+			case TokenPlusAssign:
+				i = _i + 1
+				p.ops = append(p.ops, opPlusAssign)
+			case TokenMinusAssign:
+				i = _i + 1
+				p.ops = append(p.ops, opMinusAssign)
+			case TokenMulAssign:
+				i = _i + 1
+				p.ops = append(p.ops, opMulAssign)
+			case TokenDivAssign:
+				i = _i + 1
+				p.ops = append(p.ops, opDivAssign)
+			default:
+				flag = false
+			}
+			if !flag {
+				break
+			}
 			p.childs = append(p.childs, node)
-		}
-		switch (*tokens)[i].(type) {
-		case TokenEqual:
-			i++
-			p.ops = append(p.ops, opAssign)
-		case TokenPlusAssign:
-			i++
-			p.ops = append(p.ops, opPlusAssign)
-		case TokenMinusAssign:
-			i++
-			p.ops = append(p.ops, opMinusAssign)
-		case TokenMulAssign:
-			i++
-			p.ops = append(p.ops, opMulAssign)
-		case TokenDivAssign:
-			i++
-			p.ops = append(p.ops, opDivAssign)
-		default:
-			return nil, i
 		}
 	}
 	if node, _i := makeRvalNode(tokens, i); node == nil {
@@ -365,6 +368,22 @@ func makeRvalNode(tokens *[]Token, i int) (*RvalNode, int) {
 			node.num = v.num
 			p.flag = flagNum
 			p.content = node
+		case TokenOpenBr:
+			i++
+			if node, _i := makeEqualNode(tokens, i); node == nil {
+				return nil, _i
+			} else {
+				p.flag = flagBracket
+				p.content = node
+				i = _i
+				switch (*tokens)[i].(type) {
+				case TokenCloseBr:
+					i++
+					return p, i
+				default:
+					return nil, i
+				}
+			}
 		default:
 			return nil, i
 		}
