@@ -301,6 +301,9 @@ func makeTermNode(tokens *[]Token, i int) (*TermNode, int) {
 		case TokenSlash:
 			i++
 			p.ops = append(p.ops, opDiv)
+		case TokenPer:
+			i++
+			p.ops = append(p.ops, opMod)
 		default:
 			return p, i
 		}
@@ -354,7 +357,7 @@ func makeFactNode(tokens *[]Token, i int) (*FactNode, int) {
 }
 
 func makeRvalNode(tokens *[]Token, i int) (*RvalNode, int) {
-	/* TODO: call, str, char, (eq), if, inc, dec, not, true, false */
+	/* TODO: call, str, char, if, inc, dec, not, true, false */
 	p := new(RvalNode)
 	if node, _i := makeVarNode(tokens, i); node != nil {
 		i = _i

@@ -22,6 +22,7 @@ type TokenDMinus struct{}
 type TokenSlash struct{}
 type TokenSemiColon struct{}
 type TokenColon struct{}
+type TokenPer struct{}
 type TokenAst struct{}
 type TokenAnd struct{}
 type TokenPlusAssign struct{}
@@ -112,6 +113,9 @@ func matchString(s *string, i *int) (Token, error) {
 	case strings.HasPrefix((*s)[*i:], `:`):
 		*i += 1
 		return TokenColon{}, nil
+	case strings.HasPrefix((*s)[*i:], `%`):
+		*i += 1
+		return TokenPer{}, nil
 	case strings.HasPrefix((*s)[*i:], `*`):
 		*i += 1
 		return TokenAst{}, nil

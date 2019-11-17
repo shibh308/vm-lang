@@ -48,6 +48,7 @@ const (
 	opSingleTerm TermOp = iota
 	opMul
 	opDiv
+	opMod
 )
 const (
 	opAssign AssignOp = iota
