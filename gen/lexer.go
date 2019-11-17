@@ -29,6 +29,7 @@ type TokenPlusAssign struct{}
 type TokenMinusAssign struct{}
 type TokenMulAssign struct{}
 type TokenDivAssign struct{}
+type TokenModAssign struct{}
 type TokenReturn struct{}
 type TokenBreak struct{}
 type TokenContinue struct{}
@@ -98,6 +99,9 @@ func matchString(s *string, i *int) (Token, error) {
 	case strings.HasPrefix((*s)[*i:], `/=`):
 		*i += 2
 		return TokenDivAssign{}, nil
+	case strings.HasPrefix((*s)[*i:], `%=`):
+		*i += 2
+		return TokenModAssign{}, nil
 	case strings.HasPrefix((*s)[*i:], `-`):
 		*i += 1
 		return TokenMinus{}, nil

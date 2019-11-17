@@ -3,12 +3,14 @@ package main
 type ResultType int
 type StmtFlag int
 type StmthFlag int
-type EqualOp int
-type CompOp int
-type ExprOp int
-type TermOp int
-type AssignOp int
+type EqualOpr int
+type CompOpr int
+type ExprOpr int
+type TermOpr int
+type AssignOpr int
 type RvalFlag int
+
+type opCode int
 
 const (
 	typeInt ResultType = iota
@@ -28,34 +30,35 @@ const (
 	flagContinue
 )
 const (
-	opSingleEqual EqualOp = iota
-	opEq
-	opNeq
+	oprSingleEqual EqualOpr = iota
+	oprEq
+	oprNeq
 )
 const (
-	opSingleComp CompOp = iota
-	opGr
-	opLe
-	opGrEq
-	opLeEq
+	oprSingleComp CompOpr = iota
+	oprGr
+	oprLe
+	oprGrEq
+	oprLeEq
 )
 const (
-	opSingleExpr ExprOp = iota
-	opPlus
-	opMinus
+	oprSingleExpr ExprOpr = iota
+	oprPlus
+	oprMinus
 )
 const (
-	opSingleTerm TermOp = iota
-	opMul
-	opDiv
-	opMod
+	oprSingleTerm TermOpr = iota
+	oprMul
+	oprDiv
+	oprMod
 )
 const (
-	opAssign AssignOp = iota
-	opPlusAssign
-	opMinusAssign
-	opMulAssign
-	opDivAssign
+	oprAssign AssignOpr = iota
+	oprPlusAssign
+	oprMinusAssign
+	oprMulAssign
+	oprDivAssign
+	oprModAssign
 )
 const (
 	flagCall RvalFlag = iota
@@ -70,6 +73,8 @@ const (
 	flagDec
 	flagRev
 )
+
+const ()
 
 const ignoreSize = 10
 
@@ -93,23 +98,23 @@ type StmtNode struct {
 }
 type EqualNode struct {
 	childs []*CompNode
-	ops    []EqualOp
+	ops    []EqualOpr
 }
 type CompNode struct {
 	childs []*ExprNode
-	ops    []CompOp
+	ops    []CompOpr
 }
 type ExprNode struct {
 	childs []*TermNode
-	ops    []ExprOp
+	ops    []ExprOpr
 }
 type TermNode struct {
 	childs []*FactNode
-	ops    []TermOp
+	ops    []TermOpr
 }
 type FactNode struct {
 	childs []*VarNode
-	ops    []AssignOp
+	ops    []AssignOpr
 	rval   *RvalNode
 }
 type RvalNode struct {

@@ -207,10 +207,10 @@ func makeEqualNode(tokens *[]Token, i int) (*EqualNode, int) {
 		switch (*tokens)[i].(type) {
 		case TokenDEqual:
 			i++
-			p.ops = append(p.ops, opEq)
+			p.ops = append(p.ops, oprEq)
 		case TokenNEqual:
 			i++
-			p.ops = append(p.ops, opNeq)
+			p.ops = append(p.ops, oprNeq)
 		default:
 			return p, i
 		}
@@ -235,16 +235,16 @@ func makeCompNode(tokens *[]Token, i int) (*CompNode, int) {
 		switch (*tokens)[i].(type) {
 		case TokenLe:
 			i++
-			p.ops = append(p.ops, opLe)
+			p.ops = append(p.ops, oprLe)
 		case TokenLeEqual:
 			i++
-			p.ops = append(p.ops, opLeEq)
+			p.ops = append(p.ops, oprLeEq)
 		case TokenGr:
 			i++
-			p.ops = append(p.ops, opGr)
+			p.ops = append(p.ops, oprGr)
 		case TokenGrEqual:
 			i++
-			p.ops = append(p.ops, opGrEq)
+			p.ops = append(p.ops, oprGrEq)
 		default:
 			return p, i
 		}
@@ -269,10 +269,10 @@ func makeExprNode(tokens *[]Token, i int) (*ExprNode, int) {
 		switch (*tokens)[i].(type) {
 		case TokenPlus:
 			i++
-			p.ops = append(p.ops, opPlus)
+			p.ops = append(p.ops, oprPlus)
 		case TokenMinus:
 			i++
-			p.ops = append(p.ops, opMinus)
+			p.ops = append(p.ops, oprMinus)
 		default:
 			return p, i
 		}
@@ -297,13 +297,13 @@ func makeTermNode(tokens *[]Token, i int) (*TermNode, int) {
 		switch (*tokens)[i].(type) {
 		case TokenAst:
 			i++
-			p.ops = append(p.ops, opMul)
+			p.ops = append(p.ops, oprMul)
 		case TokenSlash:
 			i++
-			p.ops = append(p.ops, opDiv)
+			p.ops = append(p.ops, oprDiv)
 		case TokenPer:
 			i++
-			p.ops = append(p.ops, opMod)
+			p.ops = append(p.ops, oprMod)
 		default:
 			return p, i
 		}
@@ -315,6 +315,7 @@ func makeTermNode(tokens *[]Token, i int) (*TermNode, int) {
 		}
 	}
 }
+
 func makeFactNode(tokens *[]Token, i int) (*FactNode, int) {
 	p := new(FactNode)
 	for {
@@ -325,19 +326,22 @@ func makeFactNode(tokens *[]Token, i int) (*FactNode, int) {
 			switch (*tokens)[_i].(type) {
 			case TokenEqual:
 				i = _i + 1
-				p.ops = append(p.ops, opAssign)
+				p.ops = append(p.ops, oprAssign)
 			case TokenPlusAssign:
 				i = _i + 1
-				p.ops = append(p.ops, opPlusAssign)
+				p.ops = append(p.ops, oprPlusAssign)
 			case TokenMinusAssign:
 				i = _i + 1
-				p.ops = append(p.ops, opMinusAssign)
+				p.ops = append(p.ops, oprMinusAssign)
 			case TokenMulAssign:
 				i = _i + 1
-				p.ops = append(p.ops, opMulAssign)
+				p.ops = append(p.ops, oprMulAssign)
 			case TokenDivAssign:
 				i = _i + 1
-				p.ops = append(p.ops, opDivAssign)
+				p.ops = append(p.ops, oprDivAssign)
+			case TokenModAssign:
+				i = _i + 1
+				p.ops = append(p.ops, oprModAssign)
 			default:
 				flag = false
 			}
