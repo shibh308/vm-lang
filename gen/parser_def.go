@@ -88,6 +88,7 @@ type FuncData struct {
 	idx       int
 	node      *FdefNode
 	variables []string
+	varMap    map[string]int
 }
 
 type RootNode struct {

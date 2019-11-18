@@ -1,6 +1,9 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+)
 
 const (
 	opExtra opCode = iota
@@ -110,6 +113,24 @@ func (fact *FactNode) addFuncVar() {
 	}
 }
 */
+func getVariables(p PNode) []string {
+	var names []string
+	switch node := p.(type) {
+	case *FactNode:
+		for _, lval := range node.lvals {
+			switch lv := lval.(type) {
+			case *VarNode:
+				names = append(names, lv.name)
+			}
+		}
+		names = append(names, getVariables(node.rval)...)
+	default:
+		for _, child := range node.getChilds() {
+			names = append(names, getVariables(child)...)
+		}
+	}
+	return names
+}
 
 func (root *RootNode) captureVariable() error {
 	root.funcMap = map[string]*FuncData{}
@@ -125,12 +146,22 @@ func (root *RootNode) captureVariable() error {
 		}
 	}
 	for _, funcData := range root.functions {
-		// TODO: get assign nodes
-		fmt.Println(funcData)
+		variables := getVariables(funcData.node)
+		funcData.variables = variables
+		funcData.varMap = map[string]int{}
+		for i, variable := range variables {
+			funcData.varMap[variable] = i
+		}
+		fmt.Println(funcData.name, variables, funcData.varMap)
 	}
 	return nil
 }
 
 func (root *RootNode) genOpCode() []opCode {
+	err := root.captureVariable()
+	if err != nil {
+		_, _ = fmt.Fprint(os.Stderr, err)
+		os.Exit(1)
+	}
 	return []opCode{}
 }

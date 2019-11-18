@@ -417,6 +417,5 @@ func parseTokenSlice(tokens []Token) *RootNode {
 		_, _ = fmt.Fprint(os.Stderr, err)
 		os.Exit(1)
 	}
-	root.captureVariable()
 	return root
 }
