@@ -8,6 +8,10 @@ import (
 func TestGen(t *testing.T) {
 
 	s1 := `
+func(a, b, c){
+	d = a + b;
+	a + d + c;
+}
 main(){
 	x = 10;
 	y = 30;
@@ -16,5 +20,5 @@ main(){
 `
 	tokens := lexString(strings.TrimSpace(s1))
 	root := parseTokenSlice(tokens)
-	root.genOpCode()
+	root.generateOpCode()
 }

@@ -86,33 +86,6 @@ func makeSet(src int, mem int) byteCode    { return byteCode{code: opSet, rand: 
 func makeLabel() byteCode                  { return byteCode{code: opLabel} }
 func makeDef() byteCode                    { return byteCode{code: opDef} }
 
-/*
-func (fact *FactNode) addFuncVar() {
-	if len(fact.lvals) == 0 {
-		return
-	}
-	var varNames []string
-	for _, lval := range fact.lvals {
-		varNames = append(varNames, lval.name)
-	}
-	var p PNode
-	var funcName string
-	p = fact
-	fl := true
-	for fl {
-		switch node := p.(type) {
-		case *FdefNode:
-			funcName = node.name
-			p = p.getPar()
-		case *RootNode:
-			node.funcMap[funcName].variables = append(node.funcMap[funcName].variables, varNames...)
-			fl = false
-		default:
-			p = p.getPar()
-		}
-	}
-}
-*/
 func getVariables(p PNode) []string {
 	var names []string
 	switch node := p.(type) {
@@ -146,22 +119,45 @@ func (root *RootNode) captureVariable() error {
 		}
 	}
 	for _, funcData := range root.functions {
-		variables := getVariables(funcData.node)
+		var variables []string
+		for _, node := range funcData.node.vars.args {
+			switch arg := node.(type) {
+			case *VarNode:
+				variables = append(variables, arg.name)
+			}
+		}
+		variables = append(variables, getVariables(funcData.node.content)...)
 		funcData.variables = variables
 		funcData.varMap = map[string]int{}
 		for i, variable := range variables {
 			funcData.varMap[variable] = i
 		}
-		fmt.Println(funcData.name, variables, funcData.varMap)
+		fmt.Println(funcData.name, variables)
 	}
 	return nil
 }
 
-func (root *RootNode) genOpCode() []opCode {
+func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
+	switch node := p.(type) {
+	case *EqualNode:
+		fmt.Println("eq")
+	default:
+		fmt.Println(node)
+	}
+
+	for _, child := range p.getChilds() {
+		root.genOpCode(child, funcData)
+	}
+	return -1
+}
+
+func (root *RootNode) generateOpCode() {
 	err := root.captureVariable()
 	if err != nil {
 		_, _ = fmt.Fprint(os.Stderr, err)
 		os.Exit(1)
 	}
-	return []opCode{}
+	for _, funcData := range root.functions {
+		root.genOpCode(funcData.node, &funcData)
+	}
 }
