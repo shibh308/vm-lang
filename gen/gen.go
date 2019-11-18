@@ -83,7 +83,11 @@ func makeSet(src int, mem int) byteCode    { return byteCode{code: opSet, rand: 
 func makeLabel() byteCode                  { return byteCode{code: opLabel} }
 func makeDef() byteCode                    { return byteCode{code: opDef} }
 
+/*
 func (fact *FactNode) addFuncVar() {
+	if len(fact.lvals) == 0 {
+		return
+	}
 	var varNames []string
 	for _, lval := range fact.lvals {
 		varNames = append(varNames, lval.name)
@@ -105,14 +109,16 @@ func (fact *FactNode) addFuncVar() {
 		}
 	}
 }
+*/
 
 func (root *RootNode) captureVariable() error {
+	root.funcMap = map[string]*FuncData{}
 	for i, node := range root.prog.childs {
 		switch fn := node.(type) {
 		case *FdefNode:
 			_, exist := root.funcMap[fn.name]
 			if exist {
-				return fmt.Errorf(`method redeclared "%s"\n`)
+				return fmt.Errorf(`method redeclared "%s"\n`, fn.name)
 			}
 			root.functions = append(root.functions, FuncData{idx: i, name: fn.name, node: fn})
 			root.funcMap[fn.name] = &root.functions[i]
@@ -120,10 +126,11 @@ func (root *RootNode) captureVariable() error {
 	}
 	for _, funcData := range root.functions {
 		// TODO: get assign nodes
+		fmt.Println(funcData)
 	}
 	return nil
 }
 
 func (root *RootNode) genOpCode() []opCode {
-	return true
+	return []opCode{}
 }

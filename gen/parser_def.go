@@ -30,25 +30,21 @@ const (
 	flagContinue
 )
 const (
-	oprSingleEqual EqualOpr = iota
-	oprEq
+	oprEq EqualOpr = iota
 	oprNeq
 )
 const (
-	oprSingleComp CompOpr = iota
-	oprGr
+	oprGr CompOpr = iota
 	oprLe
 	oprGrEq
 	oprLeEq
 )
 const (
-	oprSingleExpr ExprOpr = iota
-	oprPlus
+	oprPlus ExprOpr = iota
 	oprMinus
 )
 const (
-	oprSingleTerm TermOpr = iota
-	oprMul
+	oprMul TermOpr = iota
 	oprDiv
 	oprMod
 )
@@ -78,13 +74,14 @@ const ignoreSize = 10
 
 type PNode interface {
 	getPar() PNode
+	getChilds() []PNode
 }
 
 type ParData struct {
 	par PNode
 }
 
-func (pd ParData) getPar() PNode { return pd.par }
+func (pd *ParData) getPar() PNode { return pd.par }
 
 type FuncData struct {
 	name      string
@@ -100,100 +97,161 @@ type RootNode struct {
 	ParData
 }
 
+func (p *RootNode) getChilds() []PNode { return []PNode{p.prog} }
+
 type ProgNode struct {
 	childs []PNode
 	ParData
 }
+
+func (p *ProgNode) getChilds() []PNode { return p.childs }
+
 type FdefNode struct {
 	name    string
 	vars    *VarsNode
 	content *BlockNode
 	ParData
 }
+
+func (p *FdefNode) getChilds() []PNode { return []PNode{p.vars, p.content} }
+
 type BlockNode struct {
-	stmts []*StmthNode
+	stmts []PNode
 	ParData
 }
+
+func (p *BlockNode) getChilds() []PNode { return p.stmts }
+
 type StmthNode struct {
 	stmt *StmtNode
 	flag StmthFlag
 	ParData
 }
+
+func (p *StmthNode) getChilds() []PNode { return []PNode{p.stmt} }
+
 type StmtNode struct {
 	content *EqualNode
 	flag    StmtFlag
 	ParData
 }
+
+func (p *StmtNode) getChilds() []PNode { return []PNode{p.content} }
+
 type EqualNode struct {
-	childs []*CompNode
+	childs []PNode
 	ops    []EqualOpr
 	ParData
 }
+
+func (p *EqualNode) getChilds() []PNode { return p.childs }
+
 type CompNode struct {
-	childs []*ExprNode
+	childs []PNode
 	ops    []CompOpr
 	ParData
 }
+
+func (p *CompNode) getChilds() []PNode { return p.childs }
+
 type ExprNode struct {
-	childs []*TermNode
+	childs []PNode
 	ops    []ExprOpr
 	ParData
 }
+
+func (p *ExprNode) getChilds() []PNode { return p.childs }
+
 type TermNode struct {
-	childs []*FactNode
+	childs []PNode
 	ops    []TermOpr
 	ParData
 }
+
+func (p *TermNode) getChilds() []PNode { return p.childs }
+
 type FactNode struct {
-	lvals []*VarNode
+	lvals []PNode
 	ops   []AssignOpr
 	rval  *RvalNode
 	ParData
 }
+
+func (p *FactNode) getChilds() []PNode { return append(p.lvals, p.rval) }
+
 type RvalNode struct {
 	flag    RvalFlag
 	content PNode
 	ParData
 }
+
+func (p *RvalNode) getChilds() []PNode { return []PNode{p.content} }
+
 type CallNode struct {
 	childs []PNode
 	ParData
 }
+
+func (p *CallNode) getChilds() []PNode { return p.childs }
+
 type IfNode struct {
 	childs []PNode
 	ParData
 }
+
+func (p *IfNode) getChilds() []PNode { return p.childs }
+
 type ForNode struct {
 	childs []PNode
 	ParData
 }
+
+func (p *ForNode) getChilds() []PNode { return p.childs }
+
 type WhileNode struct {
 	childs []PNode
 	ParData
 }
+
+func (p *WhileNode) getChilds() []PNode { return p.childs }
+
 type VarsNode struct {
-	args []*VarNode
+	args []PNode
 	ParData
 }
+
+func (p *VarsNode) getChilds() []PNode { return p.args }
+
 type VarNode struct {
 	name  string
 	isRef bool
 	ParData
 }
+
+func (p *VarNode) getChilds() []PNode { return []PNode{} }
+
 type NumNode struct {
 	num int
 	ParData
 }
+
+func (p *NumNode) getChilds() []PNode { return []PNode{} }
+
 type StrNode struct {
 	childs []PNode
 	str    string
 	ParData
 }
+
+func (p *StrNode) getChilds() []PNode { return []PNode{} }
+
 type CharNode struct {
 	childs []PNode
 	char   uint8
 	ParData
 }
+
+func (p *CharNode) getChilds() []PNode { return []PNode{} }
 
 /* TODO: struct */
 // type StructNode struct{ Node }

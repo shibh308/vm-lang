@@ -159,7 +159,7 @@ func makeBlockNode(parent PNode, tokens *[]Token, i int) (*BlockNode, int) {
 			return nil, _i
 		} else {
 			i = _i
-			p.stmts = []*StmthNode{node}
+			p.stmts = []PNode{node}
 		}
 	}
 	return p, i
