@@ -74,78 +74,115 @@ const (
 	flagRev
 )
 
-const ()
-
 const ignoreSize = 10
 
 type PNode interface{}
 
-type RootNode struct{ prog *ProgNode }
-type ProgNode struct{ childs []PNode }
+type FuncData struct {
+	name      string
+	idx       int
+	node      *FdefNode
+	variables []string
+}
+
+type RootNode struct {
+	prog      *ProgNode
+	functions []FuncData
+}
+
+type ProgNode struct {
+	childs []PNode
+	par    PNode
+}
 type FdefNode struct {
 	name    string
 	vars    *VarsNode
 	content *BlockNode
+	par     PNode
 }
-type BlockNode struct{ stmts []*StmthNode }
+type BlockNode struct {
+	stmts []*StmthNode
+	par   PNode
+}
 type StmthNode struct {
 	stmt *StmtNode
 	flag StmthFlag
+	par  PNode
 }
 type StmtNode struct {
 	content *EqualNode
 	flag    StmtFlag
+	par     PNode
 }
 type EqualNode struct {
 	childs []*CompNode
 	ops    []EqualOpr
+	par    PNode
 }
 type CompNode struct {
 	childs []*ExprNode
 	ops    []CompOpr
+	par    PNode
 }
 type ExprNode struct {
 	childs []*TermNode
 	ops    []ExprOpr
+	par    PNode
 }
 type TermNode struct {
 	childs []*FactNode
 	ops    []TermOpr
+	par    PNode
 }
 type FactNode struct {
 	childs []*VarNode
 	ops    []AssignOpr
 	rval   *RvalNode
+	par    PNode
 }
 type RvalNode struct {
 	flag    RvalFlag
 	content PNode
+	par     PNode
 }
 type CallNode struct {
 	childs []PNode
+	par    PNode
 }
 type IfNode struct {
 	childs []PNode
+	par    PNode
 }
-type ForNode struct{ childs []PNode }
-type WhileNode struct{ childs []PNode }
+type ForNode struct {
+	childs []PNode
+	par    PNode
+}
+type WhileNode struct {
+	childs []PNode
+	par    PNode
+}
 type VarsNode struct {
 	args []*VarNode
+	par  PNode
 }
 type VarNode struct {
 	name  string
 	isRef bool
+	par   PNode
 }
 type NumNode struct {
 	num int
+	par PNode
 }
 type StrNode struct {
 	childs []PNode
 	str    string
+	par    PNode
 }
 type CharNode struct {
 	childs []PNode
 	char   uint8
+	par    PNode
 }
 
 /* TODO: struct */
