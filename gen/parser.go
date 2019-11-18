@@ -22,7 +22,8 @@ func makeSyntaxTree(tokens []Token) (*RootNode, error) {
 }
 
 func makeProgNode(parent PNode, tokens *[]Token, i int) (*ProgNode, int) {
-	p := &ProgNode{par: parent}
+	p := new(ProgNode)
+	p.par = parent
 	if node, _i := makeFdefNode(p, tokens, i); node == nil {
 		return nil, _i
 	} else {
@@ -42,7 +43,8 @@ func makeProgNode(parent PNode, tokens *[]Token, i int) (*ProgNode, int) {
 }
 
 func makeFdefNode(parent PNode, tokens *[]Token, i int) (*FdefNode, int) {
-	p := &FdefNode{par: parent}
+	p := new(FdefNode)
+	p.par = parent
 	switch v := (*tokens)[i].(type) {
 	case TokenVar:
 		p.name = v.name
@@ -69,7 +71,8 @@ func makeFdefNode(parent PNode, tokens *[]Token, i int) (*FdefNode, int) {
 }
 
 func makeVarsNode(parent PNode, tokens *[]Token, i int) (*VarsNode, int) {
-	p := &VarsNode{par: parent}
+	p := new(VarsNode)
+	p.par = parent
 	switch (*tokens)[i].(type) {
 	case TokenOpenBr:
 		i++
@@ -111,7 +114,8 @@ func makeVarsNode(parent PNode, tokens *[]Token, i int) (*VarsNode, int) {
 }
 
 func makeVarNode(parent PNode, tokens *[]Token, i int) (*VarNode, int) {
-	p := &VarNode{par: parent}
+	p := new(VarNode)
+	p.par = parent
 	switch v := (*tokens)[i].(type) {
 	case TokenVar:
 		i++
@@ -128,7 +132,8 @@ func makeVarNode(parent PNode, tokens *[]Token, i int) (*VarNode, int) {
 }
 
 func makeBlockNode(parent PNode, tokens *[]Token, i int) (*BlockNode, int) {
-	p := &BlockNode{par: parent}
+	p := new(BlockNode)
+	p.par = parent
 	switch (*tokens)[i].(type) {
 	case TokenOpenWBr:
 		i++
@@ -161,7 +166,8 @@ func makeBlockNode(parent PNode, tokens *[]Token, i int) (*BlockNode, int) {
 }
 
 func makeStmthNode(parent PNode, tokens *[]Token, i int) (*StmthNode, int) {
-	p := &StmthNode{par: parent}
+	p := new(StmthNode)
+	p.par = parent
 	if node, _i := makeStmtNode(p, tokens, i); node != nil {
 		i = _i
 		p.stmt = node
@@ -179,7 +185,8 @@ func makeStmthNode(parent PNode, tokens *[]Token, i int) (*StmthNode, int) {
 }
 
 func makeStmtNode(parent PNode, tokens *[]Token, i int) (*StmtNode, int) {
-	p := &StmtNode{par: parent}
+	p := new(StmtNode)
+	p.par = parent
 	p.flag = flagSingleStmt
 	switch (*tokens)[i].(type) {
 	case TokenReturn:
@@ -196,7 +203,8 @@ func makeStmtNode(parent PNode, tokens *[]Token, i int) (*StmtNode, int) {
 }
 
 func makeEqualNode(parent PNode, tokens *[]Token, i int) (*EqualNode, int) {
-	p := &EqualNode{par: parent}
+	p := new(EqualNode)
+	p.par = parent
 	if node, _i := makeCompNode(p, tokens, i); node == nil {
 		return nil, _i
 	} else {
@@ -224,7 +232,8 @@ func makeEqualNode(parent PNode, tokens *[]Token, i int) (*EqualNode, int) {
 }
 
 func makeCompNode(parent PNode, tokens *[]Token, i int) (*CompNode, int) {
-	p := &CompNode{par: parent}
+	p := new(CompNode)
+	p.par = parent
 	if node, _i := makeExprNode(p, tokens, i); node == nil {
 		return nil, _i
 	} else {
@@ -258,7 +267,8 @@ func makeCompNode(parent PNode, tokens *[]Token, i int) (*CompNode, int) {
 }
 
 func makeExprNode(parent PNode, tokens *[]Token, i int) (*ExprNode, int) {
-	p := &ExprNode{par: parent}
+	p := new(ExprNode)
+	p.par = parent
 	if node, _i := makeTermNode(p, tokens, i); node == nil {
 		return nil, _i
 	} else {
@@ -286,7 +296,8 @@ func makeExprNode(parent PNode, tokens *[]Token, i int) (*ExprNode, int) {
 }
 
 func makeTermNode(parent PNode, tokens *[]Token, i int) (*TermNode, int) {
-	p := &TermNode{par: parent}
+	p := new(TermNode)
+	p.par = parent
 	if node, _i := makeFactNode(p, tokens, i); node == nil {
 		return nil, _i
 	} else {
@@ -317,7 +328,8 @@ func makeTermNode(parent PNode, tokens *[]Token, i int) (*TermNode, int) {
 }
 
 func makeFactNode(parent PNode, tokens *[]Token, i int) (*FactNode, int) {
-	p := &FactNode{par: parent}
+	p := new(FactNode)
+	p.par = parent
 	for {
 		if node, _i := makeVarNode(p, tokens, i); node == nil {
 			break
@@ -348,7 +360,7 @@ func makeFactNode(parent PNode, tokens *[]Token, i int) (*FactNode, int) {
 			if !flag {
 				break
 			}
-			p.childs = append(p.childs, node)
+			p.lvals = append(p.lvals, node)
 		}
 	}
 	if node, _i := makeRvalNode(p, tokens, i); node == nil {
@@ -361,7 +373,8 @@ func makeFactNode(parent PNode, tokens *[]Token, i int) (*FactNode, int) {
 }
 
 func makeRvalNode(parent PNode, tokens *[]Token, i int) (*RvalNode, int) {
-	p := &RvalNode{par: parent}
+	p := new(RvalNode)
+	p.par = parent
 	/* TODO: call, str, char, if, inc, dec, not, true, false */
 	if node, _i := makeVarNode(p, tokens, i); node != nil {
 		i = _i
@@ -404,5 +417,6 @@ func parseTokenSlice(tokens []Token) *RootNode {
 		_, _ = fmt.Fprint(os.Stderr, err)
 		os.Exit(1)
 	}
+	root.captureVariable()
 	return root
 }

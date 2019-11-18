@@ -76,7 +76,15 @@ const (
 
 const ignoreSize = 10
 
-type PNode interface{}
+type PNode interface {
+	getPar() PNode
+}
+
+type ParData struct {
+	par PNode
+}
+
+func (pd ParData) getPar() PNode { return pd.par }
 
 type FuncData struct {
 	name      string
@@ -88,101 +96,103 @@ type FuncData struct {
 type RootNode struct {
 	prog      *ProgNode
 	functions []FuncData
+	funcMap   map[string]*FuncData
+	ParData
 }
 
 type ProgNode struct {
 	childs []PNode
-	par    PNode
+	ParData
 }
 type FdefNode struct {
 	name    string
 	vars    *VarsNode
 	content *BlockNode
-	par     PNode
+	ParData
 }
 type BlockNode struct {
 	stmts []*StmthNode
-	par   PNode
+	ParData
 }
 type StmthNode struct {
 	stmt *StmtNode
 	flag StmthFlag
-	par  PNode
+	ParData
 }
 type StmtNode struct {
 	content *EqualNode
 	flag    StmtFlag
-	par     PNode
+	ParData
 }
 type EqualNode struct {
 	childs []*CompNode
 	ops    []EqualOpr
-	par    PNode
+	ParData
 }
 type CompNode struct {
 	childs []*ExprNode
 	ops    []CompOpr
-	par    PNode
+	ParData
 }
 type ExprNode struct {
 	childs []*TermNode
 	ops    []ExprOpr
-	par    PNode
+	ParData
 }
 type TermNode struct {
 	childs []*FactNode
 	ops    []TermOpr
-	par    PNode
+	ParData
 }
 type FactNode struct {
-	childs []*VarNode
-	ops    []AssignOpr
-	rval   *RvalNode
-	par    PNode
+	lvals []*VarNode
+	ops   []AssignOpr
+	rval  *RvalNode
+	ParData
 }
 type RvalNode struct {
 	flag    RvalFlag
 	content PNode
-	par     PNode
+	ParData
 }
 type CallNode struct {
 	childs []PNode
-	par    PNode
+	ParData
 }
 type IfNode struct {
 	childs []PNode
-	par    PNode
+	ParData
 }
 type ForNode struct {
 	childs []PNode
-	par    PNode
+	ParData
 }
 type WhileNode struct {
 	childs []PNode
-	par    PNode
+	ParData
 }
 type VarsNode struct {
 	args []*VarNode
-	par  PNode
+	ParData
 }
 type VarNode struct {
 	name  string
 	isRef bool
-	par   PNode
+	ParData
 }
 type NumNode struct {
 	num int
-	par PNode
+	ParData
 }
 type StrNode struct {
 	childs []PNode
 	str    string
-	par    PNode
+	ParData
 }
 type CharNode struct {
 	childs []PNode
 	char   uint8
-	par    PNode
+	ParData
 }
 
 /* TODO: struct */

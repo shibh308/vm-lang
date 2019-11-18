@@ -1,5 +1,7 @@
 package main
 
+import "fmt"
+
 const (
 	opExtra opCode = iota
 	opRead
@@ -81,16 +83,45 @@ func makeSet(src int, mem int) byteCode    { return byteCode{code: opSet, rand: 
 func makeLabel() byteCode                  { return byteCode{code: opLabel} }
 func makeDef() byteCode                    { return byteCode{code: opDef} }
 
-func (root *RootNode) captureVariable() {
+func (fact *FactNode) addFuncVar() {
+	var varNames []string
+	for _, lval := range fact.lvals {
+		varNames = append(varNames, lval.name)
+	}
+	var p PNode
+	var funcName string
+	p = fact
+	fl := true
+	for fl {
+		switch node := p.(type) {
+		case *FdefNode:
+			funcName = node.name
+			p = p.getPar()
+		case *RootNode:
+			node.funcMap[funcName].variables = append(node.funcMap[funcName].variables, varNames...)
+			fl = false
+		default:
+			p = p.getPar()
+		}
+	}
+}
+
+func (root *RootNode) captureVariable() error {
 	for i, node := range root.prog.childs {
 		switch fn := node.(type) {
 		case *FdefNode:
+			_, exist := root.funcMap[fn.name]
+			if exist {
+				return fmt.Errorf(`method redeclared "%s"\n`)
+			}
 			root.functions = append(root.functions, FuncData{idx: i, name: fn.name, node: fn})
+			root.funcMap[fn.name] = &root.functions[i]
 		}
 	}
 	for _, funcData := range root.functions {
 		// TODO: get assign nodes
 	}
+	return nil
 }
 
 func (root *RootNode) genOpCode() []opCode {
