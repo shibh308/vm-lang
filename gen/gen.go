@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 )
@@ -276,13 +277,13 @@ func (root *RootNode) unUseReg(i int, funcData *FuncData) {
 	}
 }
 
-func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
+func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 	switch node := p.(type) {
 	case *FdefNode:
 		funcData.line = len(root.code)
 		root.makeOpDef(funcData.idx)
 		root.makeOpAssign(1, funcData.varCnt)
-		ret := root.genOpCode(node.content, funcData)
+		ret := root.genByteCode(node.content, funcData)
 		root.makeOpCopy(funcData.varCnt+2, ret)
 		root.makeOpReturn()
 		return -1
@@ -291,7 +292,7 @@ func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 		callFunc := root.funcMap[s]
 		st := root.useMultiRegs(funcData.varCnt, funcData)
 		for i, argNode := range node.args {
-			reg := root.genOpCode(argNode, funcData)
+			reg := root.genByteCode(argNode, funcData)
 			root.makeOpCopy(reg, st+i)
 		}
 		reg := root.useReg(funcData)
@@ -301,9 +302,9 @@ func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 		}
 		return reg
 	case *EqualNode:
-		src1 := root.genOpCode(node.childs[0], funcData)
+		src1 := root.genByteCode(node.childs[0], funcData)
 		for i := 0; i < len(node.ops); i++ {
-			src2 := root.genOpCode(node.childs[i+1], funcData)
+			src2 := root.genByteCode(node.childs[i+1], funcData)
 			dst := root.useReg(funcData)
 			switch node.ops[i] {
 			case oprEq:
@@ -317,9 +318,9 @@ func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 		}
 		return src1
 	case *CompNode:
-		src1 := root.genOpCode(node.childs[0], funcData)
+		src1 := root.genByteCode(node.childs[0], funcData)
 		for i := 0; i < len(node.ops); i++ {
-			src2 := root.genOpCode(node.childs[i+1], funcData)
+			src2 := root.genByteCode(node.childs[i+1], funcData)
 			dst := root.useReg(funcData)
 			switch node.ops[i] {
 			case oprGr:
@@ -337,9 +338,9 @@ func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 		}
 		return src1
 	case *ExprNode:
-		src1 := root.genOpCode(node.childs[0], funcData)
+		src1 := root.genByteCode(node.childs[0], funcData)
 		for i := 0; i < len(node.ops); i++ {
-			src2 := root.genOpCode(node.childs[i+1], funcData)
+			src2 := root.genByteCode(node.childs[i+1], funcData)
 			dst := root.useReg(funcData)
 			switch node.ops[i] {
 			case oprPlus:
@@ -353,9 +354,9 @@ func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 		}
 		return src1
 	case *TermNode:
-		src1 := root.genOpCode(node.childs[0], funcData)
+		src1 := root.genByteCode(node.childs[0], funcData)
 		for i := 0; i < len(node.ops); i++ {
-			src2 := root.genOpCode(node.childs[i+1], funcData)
+			src2 := root.genByteCode(node.childs[i+1], funcData)
 			dst := root.useReg(funcData)
 			switch node.ops[i] {
 			case oprMul:
@@ -369,7 +370,7 @@ func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 		}
 		return src1
 	case *FactNode:
-		rvalReg := root.genOpCode(node.rval, funcData)
+		rvalReg := root.genByteCode(node.rval, funcData)
 		for i := len(node.ops) - 1; i >= 0; i-- {
 			var lvalReg int
 			switch lv := node.lvals[i].(type) {
@@ -412,10 +413,10 @@ func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 			root.makeOpAssign(reg, num)
 			return reg
 		case flagBracket:
-			reg := root.genOpCode(node.content, funcData)
+			reg := root.genByteCode(node.content, funcData)
 			return reg
 		case flagCall:
-			reg := root.genOpCode(node.content, funcData)
+			reg := root.genByteCode(node.content, funcData)
 			return reg
 		default:
 			_, _ = fmt.Fprintf(os.Stderr, `unknown rvalFlag type: %d\n`, node.flag)
@@ -424,13 +425,13 @@ func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 	default:
 		var ret int
 		for _, child := range p.getChilds() {
-			ret = root.genOpCode(child, funcData)
+			ret = root.genByteCode(child, funcData)
 		}
 		return ret
 	}
 }
 
-func (root *RootNode) generateOpCode() {
+func (root *RootNode) generateByteCode() {
 	err := root.captureVariable()
 	if err != nil {
 		_, _ = fmt.Fprint(os.Stderr, err)
@@ -442,15 +443,84 @@ func (root *RootNode) generateOpCode() {
 		for i := 0; i < funcData.varCnt+3; i++ {
 			root.reg[i] = 2
 		}
-		root.genOpCode(funcData.node, funcData)
+		root.genByteCode(funcData.node, funcData)
 	}
 }
 
-func (root *RootNode) printOpCode() {
+func (root *RootNode) printByteCode() {
 	for _, funcData := range root.functions {
 		fmt.Printf(`"%s"  %d %d`+"\n", funcData.name, funcData.line, funcData.varCnt)
 	}
 	for _, byteCode := range root.code {
 		byteCode.print()
+	}
+}
+
+func write(f *os.File, val uint32) {
+	err := binary.Write(f, binary.BigEndian, val)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "binary.Write fialed: %s\n", err)
+		os.Exit(1)
+	}
+}
+
+func (root *RootNode) writeByteCode(filename string) {
+	f, err := os.Create(filename)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "os.Create failed: %s\n", err)
+		os.Exit(1)
+	}
+	write(f, uint32(len(root.functions)))
+	for _, fn := range root.functions {
+		write(f, uint32(fn.line))
+		write(f, uint32(fn.varCnt))
+	}
+	for _, byteCode := range root.code {
+		/* TODO: opExtra */
+		val := 0
+		op := byteCode.code
+		switch byteCode.code {
+		// reg:0
+		case opJump, opReturn, opDef:
+			val += int(op)
+			val <<= 6
+			if len(byteCode.rand) == 1 {
+				val += byteCode.rand[0]
+			}
+		// reg:1
+		case opRead, opPrint, opIf, opAssign, opGet, opSet:
+			val += int(op)
+			val <<= 6
+			val += byteCode.rand[0]
+			val <<= 9
+			if len(byteCode.rand) == 2 {
+				val += byteCode.rand[1]
+			}
+		// reg:2
+		case opCopy, opCall:
+			val += int(op)
+			val <<= 6
+			val += byteCode.rand[0]
+			val <<= 9
+			val += byteCode.rand[1]
+			val <<= 9
+			if len(byteCode.rand) == 3 {
+				val += byteCode.rand[2]
+			}
+		// reg:3
+		default:
+			val += int(op)
+			val <<= 6
+			val += byteCode.rand[0]
+			val <<= 9
+			val += byteCode.rand[1]
+			val <<= 9
+			val += byteCode.rand[2]
+			val <<= 9
+			if len(byteCode.rand) == 4 {
+				val += byteCode.rand[3]
+			}
+		}
+		write(f, uint32(val))
 	}
 }

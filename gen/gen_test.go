@@ -19,9 +19,9 @@ main(){
 	x * y + 12/(3 + 4) * 52155;
 }
 `
-	// func(x, y, x + 10) * 3;
 	tokens := lexString(strings.TrimSpace(s1))
 	root := parseTokenSlice(tokens)
-	root.generateOpCode()
-	root.printOpCode()
+	root.generateByteCode()
+	root.printByteCode()
+	root.writeByteCode("./out.scbc")
 }
