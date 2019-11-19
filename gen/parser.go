@@ -53,11 +53,11 @@ func makeFdefNode(parent PNode, tokens *[]Token, i int) (*FdefNode, int) {
 		return nil, i
 	}
 
-	if node, _i := makeVarsNode(p, tokens, i); node == nil {
-		return nil, _i
-	} else {
+	if node, _i, correct := makeVars(p, tokens, i); correct {
 		i = _i
 		p.vars = node
+	} else {
+		return nil, _i
 	}
 
 	if node, _i := makeBlockNode(p, tokens, i); node == nil {
@@ -70,14 +70,13 @@ func makeFdefNode(parent PNode, tokens *[]Token, i int) (*FdefNode, int) {
 	return p, i
 }
 
-func makeVarsNode(parent PNode, tokens *[]Token, i int) (*VarsNode, int) {
-	p := new(VarsNode)
-	p.par = parent
+func makeVars(parent PNode, tokens *[]Token, i int) ([]PNode, int, bool) {
+	var nodes []PNode
 	switch (*tokens)[i].(type) {
 	case TokenOpenBr:
 		i++
 	default:
-		return nil, i
+		return nil, i, false
 	}
 
 	firstArg := true
@@ -96,11 +95,11 @@ func makeVarsNode(parent PNode, tokens *[]Token, i int) (*VarsNode, int) {
 			firstArg = false
 		}
 
-		if node, _i := makeVarNode(p, tokens, i); node == nil {
+		if node, _i := makeEqualNode(parent, tokens, i); node == nil {
 			break
 		} else {
 			i = _i
-			p.args = append(p.args, node)
+			nodes = append(nodes, node)
 		}
 	}
 
@@ -108,9 +107,9 @@ func makeVarsNode(parent PNode, tokens *[]Token, i int) (*VarsNode, int) {
 	case TokenCloseBr:
 		i++
 	default:
-		return nil, i
+		return nil, i, false
 	}
-	return p, i
+	return nodes, i, true
 }
 
 func makeVarNode(parent PNode, tokens *[]Token, i int) (*VarNode, int) {
@@ -375,8 +374,12 @@ func makeFactNode(parent PNode, tokens *[]Token, i int) (*FactNode, int) {
 func makeRvalNode(parent PNode, tokens *[]Token, i int) (*RvalNode, int) {
 	p := new(RvalNode)
 	p.par = parent
-	/* TODO: call, str, char, if, inc, dec, not, true, false */
-	if node, _i := makeVarNode(p, tokens, i); node != nil {
+	/* TODO: str, char, if, inc, dec, not, true, false */
+	if node, _i := makeCallNode(p, tokens, i); node != nil {
+		i = _i
+		p.flag = flagCall
+		p.content = node
+	} else if node, _i := makeVarNode(p, tokens, i); node != nil {
 		i = _i
 		p.flag = flagVar
 		p.content = node
@@ -406,6 +409,23 @@ func makeRvalNode(parent PNode, tokens *[]Token, i int) (*RvalNode, int) {
 			}
 		default:
 			return nil, i
+		}
+	}
+	return p, i
+}
+
+func makeCallNode(parent PNode, tokens *[]Token, i int) (*CallNode, int) {
+	p := new(CallNode)
+	p.par = parent
+	if varNode, _i := makeVarNode(p, tokens, i); varNode == nil {
+		return nil, i
+	} else {
+		p.name = varNode.name
+		if vars, _i, correct := makeVars(p, tokens, _i); correct {
+			p.args = vars
+			i = _i
+		} else {
+			return nil, _i
 		}
 	}
 	return p, i

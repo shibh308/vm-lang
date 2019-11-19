@@ -112,12 +112,12 @@ func (p *ProgNode) getChilds() []PNode { return p.childs }
 
 type FdefNode struct {
 	name    string
-	vars    *VarsNode
+	vars    []PNode
 	content *BlockNode
 	ParData
 }
 
-func (p *FdefNode) getChilds() []PNode { return []PNode{p.vars, p.content} }
+func (p *FdefNode) getChilds() []PNode { return append(p.vars, p.content) }
 
 type BlockNode struct {
 	stmts []PNode
@@ -192,11 +192,12 @@ type RvalNode struct {
 func (p *RvalNode) getChilds() []PNode { return []PNode{p.content} }
 
 type CallNode struct {
-	childs []PNode
+	name string
+	args []PNode
 	ParData
 }
 
-func (p *CallNode) getChilds() []PNode { return p.childs }
+func (p *CallNode) getChilds() []PNode { return p.args }
 
 type IfNode struct {
 	childs []PNode
@@ -218,13 +219,6 @@ type WhileNode struct {
 }
 
 func (p *WhileNode) getChilds() []PNode { return p.childs }
-
-type VarsNode struct {
-	args []PNode
-	ParData
-}
-
-func (p *VarsNode) getChilds() []PNode { return p.args }
 
 type VarNode struct {
 	name  string

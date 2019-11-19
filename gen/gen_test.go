@@ -15,9 +15,11 @@ func(a, b, c){
 main(){
 	x = 10;
 	y = 30;
+	func(x, y, x + 10) * 3;
 	x * y + 12/(3 + 4) * 52155;
 }
 `
+	// func(x, y, x + 10) * 3;
 	tokens := lexString(strings.TrimSpace(s1))
 	root := parseTokenSlice(tokens)
 	root.generateOpCode()

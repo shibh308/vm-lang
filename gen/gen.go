@@ -155,8 +155,8 @@ func (root *RootNode) makeOpDef(def int) {
 	root.code = append(root.code, byteCode{code: opDef, rand: []int{def}})
 }
 func (root *RootNode) makeOpReturn() { root.code = append(root.code, byteCode{code: opReturn}) }
-func (root *RootNode) makeOpCall(reg1 int, reg2 int, def int) {
-	root.code = append(root.code, byteCode{code: opCall, rand: []int{reg1, reg2, def}})
+func (root *RootNode) makeOpCall(src int, dst int, def int) {
+	root.code = append(root.code, byteCode{code: opCall, rand: []int{src, dst, def}})
 }
 func (root *RootNode) makeOpAssign(reg int, val int) {
 	root.code = append(root.code, byteCode{code: opAssign, rand: []int{reg, val}})
@@ -217,7 +217,7 @@ func (root *RootNode) captureVariable() error {
 		root.funcMap[funcData.name] = &root.functions[i]
 		funcData.idx = i
 		var variables []string
-		for _, node := range funcData.node.vars.args {
+		for _, node := range funcData.node.vars {
 			switch arg := node.(type) {
 			case *VarNode:
 				variables = append(variables, arg.name)
@@ -236,6 +236,23 @@ func (root *RootNode) captureVariable() error {
 
 func (f *FuncData) getReg(name string) int {
 	return f.varMap[name]
+}
+
+func (root *RootNode) useMultiRegs(size int, funcData *FuncData) int {
+	var i int
+	match := 0
+	for i = 0; match < size; i++ {
+		if i >= len(root.reg) {
+			root.reg = append(root.reg, 0)
+			break
+		}
+		if root.reg[i] == 0 {
+			match++
+		} else if root.reg[i] == 1 {
+			match = 0
+		}
+	}
+	return i - size
 }
 
 func (root *RootNode) useReg(funcData *FuncData) int {
@@ -267,6 +284,21 @@ func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 		ret := root.genOpCode(node.content, funcData)
 		root.makeOpCopy(funcData.varCnt+2, ret)
 		root.makeOpReturn()
+		return -1
+	case *CallNode:
+		s := node.name
+		callFunc := root.funcMap[s]
+		st := root.useMultiRegs(funcData.varCnt, funcData)
+		for i, argNode := range node.args {
+			reg := root.genOpCode(argNode, funcData)
+			root.makeOpCopy(reg, st+i)
+		}
+		reg := root.useReg(funcData)
+		root.makeOpCall(st, reg, callFunc.idx)
+		for i := 0; i < len(node.args); i++ {
+			root.unUseReg(st+i, funcData)
+		}
+		return reg
 	case *EqualNode:
 		src1 := root.genOpCode(node.childs[0], funcData)
 		for i := 0; i < len(node.ops); i++ {
@@ -381,6 +413,12 @@ func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 		case flagBracket:
 			reg := root.genOpCode(node.content, funcData)
 			return reg
+		case flagCall:
+			reg := root.genOpCode(node.content, funcData)
+			return reg
+		default:
+			_, _ = fmt.Fprintf(os.Stderr, `unknown rvalFlag type: %d\n`, node.flag)
+			return -1
 		}
 	default:
 		var ret int
@@ -389,7 +427,6 @@ func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 		}
 		return ret
 	}
-	return -1
 }
 
 func (root *RootNode) generateOpCode() {
