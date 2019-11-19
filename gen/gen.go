@@ -30,6 +30,7 @@ const (
 	opIf
 	opCall
 
+	opDef
 	opReturn
 	opAssign
 
@@ -74,6 +75,8 @@ func (b byteCode) print() {
 		s = "if"
 	case opCall:
 		s = "call"
+	case opDef:
+		s = "def"
 	case opReturn:
 		s = "return"
 	case opAssign:
@@ -148,17 +151,20 @@ func (root *RootNode) makeOpJump(label int) {
 func (root *RootNode) makeOpIf(reg int, label int) {
 	root.code = append(root.code, byteCode{code: opIf, rand: []int{reg, label}})
 }
-func (root *RootNode) makeReturn() { root.code = append(root.code, byteCode{code: opReturn}) }
-func (root *RootNode) makeCall(reg1 int, reg2 int, def int) {
+func (root *RootNode) makeOpDef(def int) {
+	root.code = append(root.code, byteCode{code: opDef, rand: []int{def}})
+}
+func (root *RootNode) makeOpReturn() { root.code = append(root.code, byteCode{code: opReturn}) }
+func (root *RootNode) makeOpCall(reg1 int, reg2 int, def int) {
 	root.code = append(root.code, byteCode{code: opCall, rand: []int{reg1, reg2, def}})
 }
-func (root *RootNode) makeAssign(reg int, val int) {
+func (root *RootNode) makeOpAssign(reg int, val int) {
 	root.code = append(root.code, byteCode{code: opAssign, rand: []int{reg, val}})
 }
-func (root *RootNode) makeGet(dst int, mem int) {
+func (root *RootNode) makeOpGet(dst int, mem int) {
 	root.code = append(root.code, byteCode{code: opGet, rand: []int{dst, mem}})
 }
-func (root *RootNode) makeSet(src int, mem int) {
+func (root *RootNode) makeOpSet(src int, mem int) {
 	root.code = append(root.code, byteCode{code: opSet, rand: []int{src, mem}})
 }
 
@@ -183,19 +189,33 @@ func getVariables(p PNode) []string {
 
 func (root *RootNode) captureVariable() error {
 	root.funcMap = map[string]*FuncData{}
-	for i, node := range root.prog.childs {
+	for _, node := range root.prog.childs {
 		switch fn := node.(type) {
 		case *FdefNode:
 			_, exist := root.funcMap[fn.name]
 			if exist {
-				return fmt.Errorf(`method redeclared "%s"\n`, fn.name)
+				return fmt.Errorf(`function redeclared "%s"\n`, fn.name)
 			}
-			root.functions = append(root.functions, FuncData{idx: i, name: fn.name, node: fn, variables: []string{}, varMap: map[string]int{}})
-			root.funcMap[fn.name] = &root.functions[i]
+			root.functions = append(root.functions, FuncData{name: fn.name, node: fn, variables: []string{}, varMap: map[string]int{}})
 		}
+	}
+	fl := false
+	for i := 0; i < len(root.functions); i++ {
+		if root.functions[i].name == "main" {
+			if i != 0 {
+				root.functions[i], root.functions[0] = root.functions[0], root.functions[i]
+			}
+			fl = true
+			break
+		}
+	}
+	if !fl {
+		return fmt.Errorf(`main function is not defined\n`)
 	}
 	for i := 0; i < len(root.functions); i++ {
 		funcData := &root.functions[i]
+		root.funcMap[funcData.name] = &root.functions[i]
+		funcData.idx = i
 		var variables []string
 		for _, node := range funcData.node.vars.args {
 			switch arg := node.(type) {
@@ -204,6 +224,7 @@ func (root *RootNode) captureVariable() error {
 			}
 		}
 		variables = append(variables, getVariables(funcData.node.content)...)
+		funcData.varCnt = len(variables)
 		funcData.variables = variables
 		funcData.varMap = map[string]int{}
 		for i, variable := range variables {
@@ -240,6 +261,12 @@ func (root *RootNode) unUseReg(i int, funcData *FuncData) {
 
 func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 	switch node := p.(type) {
+	case *FdefNode:
+		root.makeOpDef(funcData.idx)
+		root.makeOpAssign(1, funcData.varCnt)
+		ret := root.genOpCode(node.content, funcData)
+		root.makeOpCopy(funcData.varCnt+2, ret)
+		root.makeOpReturn()
 	case *EqualNode:
 		src1 := root.genOpCode(node.childs[0], funcData)
 		for i := 0; i < len(node.ops); i++ {
@@ -349,7 +376,7 @@ func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 				num = numNode.num
 			}
 			reg := root.useReg(funcData)
-			root.makeAssign(reg, num)
+			root.makeOpAssign(reg, num)
 			return reg
 		case flagBracket:
 			reg := root.genOpCode(node.content, funcData)
@@ -372,8 +399,8 @@ func (root *RootNode) generateOpCode() {
 		os.Exit(1)
 	}
 	for _, funcData := range root.functions {
-		root.reg = make([]uint8, len(funcData.variables)+2)
-		for i := 0; i < len(funcData.variables)+2; i++ {
+		root.reg = make([]uint8, funcData.varCnt+3)
+		for i := 0; i < funcData.varCnt+3; i++ {
 			root.reg[i] = 2
 		}
 		root.genOpCode(funcData.node, &funcData)

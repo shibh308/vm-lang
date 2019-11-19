@@ -88,6 +88,7 @@ type FuncData struct {
 	idx       int
 	node      *FdefNode
 	variables []string
+	varCnt    int
 	varMap    map[string]int
 }
 
@@ -134,7 +135,7 @@ type StmthNode struct {
 func (p *StmthNode) getChilds() []PNode { return []PNode{p.stmt} }
 
 type StmtNode struct {
-	content *EqualNode
+	content *FactNode
 	flag    StmtFlag
 	ParData
 }
@@ -176,7 +177,7 @@ func (p *TermNode) getChilds() []PNode { return p.childs }
 type FactNode struct {
 	lvals []PNode
 	ops   []AssignOpr
-	rval  *RvalNode
+	rval  *EqualNode
 	ParData
 }
 

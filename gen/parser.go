@@ -193,7 +193,7 @@ func makeStmtNode(parent PNode, tokens *[]Token, i int) (*StmtNode, int) {
 		i++
 		p.flag = flagReturn
 	}
-	if node, _i := makeEqualNode(p, tokens, i); node != nil {
+	if node, _i := makeFactNode(p, tokens, i); node != nil {
 		i = _i
 		p.content = node
 		return p, i
@@ -298,7 +298,7 @@ func makeExprNode(parent PNode, tokens *[]Token, i int) (*ExprNode, int) {
 func makeTermNode(parent PNode, tokens *[]Token, i int) (*TermNode, int) {
 	p := new(TermNode)
 	p.par = parent
-	if node, _i := makeFactNode(p, tokens, i); node == nil {
+	if node, _i := makeRvalNode(p, tokens, i); node == nil {
 		return nil, _i
 	} else {
 		i = _i
@@ -318,7 +318,7 @@ func makeTermNode(parent PNode, tokens *[]Token, i int) (*TermNode, int) {
 		default:
 			return p, i
 		}
-		if node, _i := makeFactNode(p, tokens, i); node == nil {
+		if node, _i := makeRvalNode(p, tokens, i); node == nil {
 			return nil, _i
 		} else {
 			i = _i
@@ -363,7 +363,7 @@ func makeFactNode(parent PNode, tokens *[]Token, i int) (*FactNode, int) {
 			p.lvals = append(p.lvals, node)
 		}
 	}
-	if node, _i := makeRvalNode(p, tokens, i); node == nil {
+	if node, _i := makeEqualNode(p, tokens, i); node == nil {
 		return nil, 0
 	} else {
 		i = _i
