@@ -96,7 +96,7 @@ type RootNode struct {
 	functions []FuncData
 	funcMap   map[string]*FuncData
 	code      []byteCode
-	reg       []bool
+	reg       []uint8
 	ParData
 }
 

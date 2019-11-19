@@ -194,7 +194,8 @@ func (root *RootNode) captureVariable() error {
 			root.funcMap[fn.name] = &root.functions[i]
 		}
 	}
-	for _, funcData := range root.functions {
+	for i := 0; i < len(root.functions); i++ {
+		funcData := &root.functions[i]
 		var variables []string
 		for _, node := range funcData.node.vars.args {
 			switch arg := node.(type) {
@@ -208,7 +209,6 @@ func (root *RootNode) captureVariable() error {
 		for i, variable := range variables {
 			funcData.varMap[variable] = i
 		}
-		fmt.Println(funcData.name, variables)
 	}
 	return nil
 }
@@ -219,22 +219,22 @@ func (f *FuncData) getReg(name string) int {
 
 func (root *RootNode) useReg(funcData *FuncData) int {
 	var i int
-	for i = len(funcData.variables) + 2; ; i++ {
+	for i = 0; ; i++ {
 		if i >= len(root.reg) {
-			root.reg = append(root.reg, false)
+			root.reg = append(root.reg, 1)
 			break
 		}
-		if root.reg[i] == false {
+		if root.reg[i] == 0 {
+			root.reg[i] = 1
 			break
 		}
 	}
-	root.reg[i] = true
 	return i
 }
 
 func (root *RootNode) unUseReg(i int, funcData *FuncData) {
-	if i >= len(funcData.variables)+2 {
-		root.reg[i] = false
+	if root.reg[i] != 2 {
+		root.reg[i] = 0
 	}
 }
 
@@ -283,7 +283,6 @@ func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 			dst := root.useReg(funcData)
 			switch node.ops[i] {
 			case oprPlus:
-				fmt.Println("add:", src1, src2, dst)
 				root.makeOpAdd(src1, src2, dst)
 			case oprMinus:
 				root.makeOpSub(src1, src2, dst)
@@ -357,11 +356,12 @@ func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 			return reg
 		}
 	default:
+		var ret int
 		for _, child := range p.getChilds() {
-			root.genOpCode(child, funcData)
+			ret = root.genOpCode(child, funcData)
 		}
+		return ret
 	}
-
 	return -1
 }
 
@@ -372,9 +372,9 @@ func (root *RootNode) generateOpCode() {
 		os.Exit(1)
 	}
 	for _, funcData := range root.functions {
-		root.reg = make([]bool, len(funcData.variables)+3)
+		root.reg = make([]uint8, len(funcData.variables)+2)
 		for i := 0; i < len(funcData.variables)+2; i++ {
-			root.reg[i] = true
+			root.reg[i] = 2
 		}
 		root.genOpCode(funcData.node, &funcData)
 	}
