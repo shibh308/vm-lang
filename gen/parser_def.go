@@ -95,7 +95,8 @@ type RootNode struct {
 	prog      *ProgNode
 	functions []FuncData
 	funcMap   map[string]*FuncData
-	code      []opCode
+	code      []byteCode
+	reg       []bool
 	ParData
 }
 
