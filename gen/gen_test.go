@@ -23,4 +23,5 @@ main(){
 	tokens := lexString(strings.TrimSpace(s1))
 	root := parseTokenSlice(tokens)
 	root.generateOpCode()
+	root.printOpCode()
 }

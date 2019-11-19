@@ -279,6 +279,7 @@ func (root *RootNode) unUseReg(i int, funcData *FuncData) {
 func (root *RootNode) genOpCode(p PNode, funcData *FuncData) int {
 	switch node := p.(type) {
 	case *FdefNode:
+		funcData.line = len(root.code)
 		root.makeOpDef(funcData.idx)
 		root.makeOpAssign(1, funcData.varCnt)
 		ret := root.genOpCode(node.content, funcData)
@@ -435,12 +436,19 @@ func (root *RootNode) generateOpCode() {
 		_, _ = fmt.Fprint(os.Stderr, err)
 		os.Exit(1)
 	}
-	for _, funcData := range root.functions {
+	for i := 0; i < len(root.functions); i++ {
+		funcData := &root.functions[i]
 		root.reg = make([]uint8, funcData.varCnt+3)
 		for i := 0; i < funcData.varCnt+3; i++ {
 			root.reg[i] = 2
 		}
-		root.genOpCode(funcData.node, &funcData)
+		root.genOpCode(funcData.node, funcData)
+	}
+}
+
+func (root *RootNode) printOpCode() {
+	for _, funcData := range root.functions {
+		fmt.Printf(`"%s"  %d %d`+"\n", funcData.name, funcData.line, funcData.varCnt)
 	}
 	for _, byteCode := range root.code {
 		byteCode.print()

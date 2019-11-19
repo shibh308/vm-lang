@@ -86,6 +86,7 @@ func (pd *ParData) getPar() PNode { return pd.par }
 type FuncData struct {
 	name      string
 	idx       int
+	line      int
 	node      *FdefNode
 	variables []string
 	varCnt    int
