@@ -165,7 +165,7 @@ func matchString(s *string, i *int) (Token, error) {
 	case strings.HasPrefix((*s)[*i:], `>=`):
 		*i += 2
 		return TokenGrEqual{}, nil
-	case strings.HasPrefix((*s)[*i:], `<`):
+	case strings.HasPrefix((*s)[*i:], `>`):
 		*i += 1
 		return TokenGr{}, nil
 	case strings.HasPrefix((*s)[*i:], `<=`):
