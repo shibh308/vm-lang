@@ -254,7 +254,7 @@ func (root *RootNode) useMultiRegs(size int, funcData *FuncData) int {
 	return i - size
 }
 
-func (root *RootNode) useReg(funcData *FuncData) int {
+func (root *RootNode) useReg() int {
 	var i int
 	for i = 0; ; i++ {
 		if i >= len(root.reg) {
@@ -269,8 +269,8 @@ func (root *RootNode) useReg(funcData *FuncData) int {
 	return i
 }
 
-func (root *RootNode) unUseReg(i int, funcData *FuncData) {
-	if root.reg[i] != 2 {
+func (root *RootNode) unUseReg(i int) {
+	if i != -1 && root.reg[i] != 2 {
 		root.reg[i] = 0
 	}
 }
@@ -285,6 +285,7 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 			os.Exit(1)
 		}
 		root.makeOpCopy(ret, 1)
+		root.unUseReg(ret)
 		root.makeOpReturn()
 		return -1
 	case *CallNode:
@@ -298,17 +299,19 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 		for i, argNode := range node.args {
 			reg := root.genByteCode(argNode, funcData)
 			root.makeOpCopy(reg, st+i)
+			root.unUseReg(reg)
 		}
-		reg := root.useReg(funcData)
+		reg := root.useReg()
 		root.makeOpCall(st, reg, callFunc.idx)
 		for i := 0; i < len(node.args); i++ {
-			root.unUseReg(st+i, funcData)
+			root.unUseReg(st + i)
 		}
 		return reg
 	case *IfNode:
 		comp := root.genByteCode(node.comp, funcData)
 		idx := len(root.code)
 		root.makeOpIf(comp, 0)
+		root.unUseReg(comp)
 		root.genByteCode(node.content, funcData)
 		root.code[idx].rand[1] = len(root.code) - 1
 		return -1
@@ -317,6 +320,7 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 		case flagReturn:
 			ret := root.genByteCode(node.content, funcData)
 			root.makeOpCopy(ret, 1)
+			root.unUseReg(ret)
 			root.makeOpReturn()
 			return -1
 		default:
@@ -326,15 +330,15 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 		src1 := root.genByteCode(node.childs[0], funcData)
 		for i := 0; i < len(node.ops); i++ {
 			src2 := root.genByteCode(node.childs[i+1], funcData)
-			dst := root.useReg(funcData)
+			dst := root.useReg()
 			switch node.ops[i] {
 			case oprEq:
 				root.makeOpEq(src1, src2, dst)
 			case oprNeq:
 				root.makeOpNeq(src1, src2, dst)
 			}
-			root.unUseReg(src1, funcData)
-			root.unUseReg(src2, funcData)
+			root.unUseReg(src1)
+			root.unUseReg(src2)
 			src1 = dst
 		}
 		return src1
@@ -342,7 +346,7 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 		src1 := root.genByteCode(node.childs[0], funcData)
 		for i := 0; i < len(node.ops); i++ {
 			src2 := root.genByteCode(node.childs[i+1], funcData)
-			dst := root.useReg(funcData)
+			dst := root.useReg()
 			switch node.ops[i] {
 			case oprGr:
 				root.makeOpGr(src1, src2, dst)
@@ -353,8 +357,8 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 			case oprLeEq:
 				root.makeOpLeeq(src1, src2, dst)
 			}
-			root.unUseReg(src1, funcData)
-			root.unUseReg(src2, funcData)
+			root.unUseReg(src1)
+			root.unUseReg(src2)
 			src1 = dst
 		}
 		return src1
@@ -362,15 +366,15 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 		src1 := root.genByteCode(node.childs[0], funcData)
 		for i := 0; i < len(node.ops); i++ {
 			src2 := root.genByteCode(node.childs[i+1], funcData)
-			dst := root.useReg(funcData)
+			dst := root.useReg()
 			switch node.ops[i] {
 			case oprPlus:
 				root.makeOpAdd(src1, src2, dst)
 			case oprMinus:
 				root.makeOpSub(src1, src2, dst)
 			}
-			root.unUseReg(src1, funcData)
-			root.unUseReg(src2, funcData)
+			root.unUseReg(src1)
+			root.unUseReg(src2)
 			src1 = dst
 		}
 		return src1
@@ -378,15 +382,15 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 		src1 := root.genByteCode(node.childs[0], funcData)
 		for i := 0; i < len(node.ops); i++ {
 			src2 := root.genByteCode(node.childs[i+1], funcData)
-			dst := root.useReg(funcData)
+			dst := root.useReg()
 			switch node.ops[i] {
 			case oprMul:
 				root.makeOpMul(src1, src2, dst)
 			case oprDiv:
 				root.makeOpDiv(src1, src2, dst)
 			}
-			root.unUseReg(src1, funcData)
-			root.unUseReg(src2, funcData)
+			root.unUseReg(src1)
+			root.unUseReg(src2)
 			src1 = dst
 		}
 		return src1
@@ -412,6 +416,7 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 			case oprModAssign:
 				root.makeOpMod(lvalReg, rvalReg, lvalReg)
 			}
+			root.unUseReg(rvalReg)
 			rvalReg = lvalReg
 		}
 		return rvalReg
@@ -430,7 +435,7 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 			case *NumNode:
 				num = numNode.num
 			}
-			reg := root.useReg(funcData)
+			reg := root.useReg()
 			root.makeOpAssign(reg, num)
 			return reg
 		case flagBracket:
@@ -444,8 +449,11 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 			return -1
 		}
 	default:
-		var ret int
+		ret := -1
 		for _, child := range p.getChilds() {
+			if ret != -1 {
+				root.unUseReg(ret)
+			}
 			ret = root.genByteCode(child, funcData)
 		}
 		return ret

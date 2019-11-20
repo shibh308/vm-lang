@@ -2,6 +2,7 @@
 
 Vm::Vm(){
 }
+
 void Vm::run(std::string path){
     std::ifstream file(path, std::ios::in | std::ifstream::binary);
     
@@ -23,8 +24,8 @@ void Vm::run(std::string path){
         file.read(reinterpret_cast<char*>(&inp), sizeof(inp));
         def_lines[i] = inp;
         file.read(reinterpret_cast<char*>(&inp), sizeof(inp));
-        var_nums[i] = inp & ((1 << 16) - 1);
-        arg_nums[i] = (inp >> 16) & ((1 << 16) - 1);
+        var_nums[i] = inp & ((1u << 16u) - 1);
+        arg_nums[i] = (inp >> 16u) & ((1u << 16u) - 1);
     }
     
     byte_codes = (uint32_t*)malloc(line_num * sizeof(uint32_t));
@@ -36,7 +37,8 @@ void Vm::run(std::string path){
     uint32_t line = 0;
     uint32_t st = 0;
     uint32_t en = var_nums[0] + 4;
-    std::vector<int> reg(var_nums[0] + 4);
+    regsize = 1024;
+    reg = (uint32_t*)malloc(1024 * sizeof(uint32_t));
     reg[0] = line_num;
     reg[2] = 1;
     reg[3] = 0;
@@ -154,8 +156,12 @@ void Vm::run(std::string path){
             uint32_t dst = getReg2(bc);
             uint32_t def = getOption3(bc);
             ++call_counts[def];
-            if(reg.size() < en + var_nums[def] + 4)
-                reg.resize(en + var_nums[def] + 4);
+            if(regsize < en + var_nums[def] + 4){
+                auto new_reg = (uint32_t*)malloc((en + var_nums[def] + 1027) / 1024);
+                memcpy(new_reg, reg, sizeof(uint32_t));
+                free(reg);
+                reg = new_reg;
+            }
             reg[en] = line;
             reg[en + 2] = getIdx(dst);
             reg[en + 3] = st;
