@@ -189,6 +189,12 @@ func makeStmthNode(parent PNode, tokens *[]Token, i int) (*StmthNode, int) {
 		}
 	}
 	/* TODO: for, while */
+	if node, _i := makeIfNode(p, tokens, i); node != nil {
+		i = _i
+		p.stmt = node
+		p.flag = flagIf
+		return p, i
+	}
 	return nil, i
 }
 
@@ -383,7 +389,7 @@ func makeFactNode(parent PNode, tokens *[]Token, i int) (*FactNode, int) {
 func makeRvalNode(parent PNode, tokens *[]Token, i int) (*RvalNode, int) {
 	p := new(RvalNode)
 	p.par = parent
-	/* TODO: str, char, if, inc, dec, not, true, false */
+	/* TODO: str, char, inc, dec, not, true, false */
 	if node, _i := makeCallNode(p, tokens, i); node != nil {
 		i = _i
 		p.flag = flagCall
@@ -421,6 +427,42 @@ func makeRvalNode(parent PNode, tokens *[]Token, i int) (*RvalNode, int) {
 		}
 	}
 	return p, i
+}
+
+func makeIfNode(parent PNode, tokens *[]Token, i int) (*IfNode, int) {
+	p := new(IfNode)
+	p.par = parent
+	switch (*tokens)[i].(type) {
+	case TokenIf:
+		i++
+		switch (*tokens)[i].(type) {
+		case TokenOpenBr:
+			i++
+			if comp, _i := makeFactNode(p, tokens, i); comp == nil {
+				return nil, _i
+			} else {
+				i = _i
+				p.comp = comp
+				switch (*tokens)[i].(type) {
+				case TokenCloseBr:
+					i++
+					if block, _i := makeBlockNode(p, tokens, i); block == nil {
+						return nil, _i
+					} else {
+						i = _i
+						p.content = block
+						return p, i
+					}
+				default:
+					return nil, i
+				}
+			}
+		default:
+			return nil, i
+		}
+	default:
+		return nil, i
+	}
 }
 
 func makeCallNode(parent PNode, tokens *[]Token, i int) (*CallNode, int) {

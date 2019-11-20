@@ -2,7 +2,14 @@
 #include "vm.h"
 
 int main(){
-    Vm vm;
-    vm.run("../gen/out.scbc");
+    std::vector<std::string> files{
+        "../gen/out_s1.scbc",
+        "../gen/out_s2.scbc",
+        "../gen/out_s3.scbc",
+    };
+    for(auto& s : files){
+        Vm vm;
+        vm.run(s);
+    }
     return 0;
 }

@@ -20,6 +20,7 @@ const (
 )
 const (
 	flagSingleStmth StmthFlag = iota
+	flagIf
 	flagFor
 	flagWhile
 )
@@ -64,7 +65,6 @@ const (
 	flagChar
 	flagBool
 	flagBracket
-	flagIf
 	flagInc
 	flagDec
 	flagRev
@@ -130,7 +130,7 @@ type BlockNode struct {
 func (p *BlockNode) getChilds() []PNode { return p.stmts }
 
 type StmthNode struct {
-	stmt *StmtNode
+	stmt PNode
 	flag StmthFlag
 	ParData
 }
@@ -203,11 +203,12 @@ type CallNode struct {
 func (p *CallNode) getChilds() []PNode { return p.args }
 
 type IfNode struct {
-	childs []PNode
+	comp    PNode
+	content PNode
 	ParData
 }
 
-func (p *IfNode) getChilds() []PNode { return p.childs }
+func (p *IfNode) getChilds() []PNode { return []PNode{p.comp, p.content} }
 
 type ForNode struct {
 	childs []PNode

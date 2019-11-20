@@ -278,14 +278,22 @@ func (root *RootNode) unUseReg(i int, funcData *FuncData) {
 func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 	switch node := p.(type) {
 	case *FdefNode:
-		funcData.line = len(root.code)
+		funcData.line = len(root.code) + 2*len(root.functions) + 1
 		ret := root.genByteCode(node.content, funcData)
+		if ret == -1 {
+			_, _ = fmt.Fprintln(os.Stderr, "missing a return statement in function block")
+			os.Exit(1)
+		}
 		root.makeOpCopy(ret, 1)
 		root.makeOpReturn()
 		return -1
 	case *CallNode:
 		s := node.name
-		callFunc := root.funcMap[s]
+		callFunc, exist := root.funcMap[s]
+		if !exist {
+			_, _ = fmt.Fprintln(os.Stderr, "calling an undeclared function"+s)
+			os.Exit(1)
+		}
 		st := root.useMultiRegs(callFunc.argCnt, funcData)
 		for i, argNode := range node.args {
 			reg := root.genByteCode(argNode, funcData)
@@ -297,6 +305,23 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 			root.unUseReg(st+i, funcData)
 		}
 		return reg
+	case *IfNode:
+		comp := root.genByteCode(node.comp, funcData)
+		idx := len(root.code)
+		root.makeOpIf(comp, 0)
+		root.genByteCode(node.content, funcData)
+		root.code[idx].rand[1] = len(root.code) - 1 + 2*len(root.functions) + 1
+		return -1
+	case *StmtNode:
+		switch node.flag {
+		case flagReturn:
+			ret := root.genByteCode(node.content, funcData)
+			root.makeOpCopy(ret, 1)
+			root.makeOpReturn()
+			return -1
+		default:
+			return root.genByteCode(node.content, funcData)
+		}
 	case *EqualNode:
 		src1 := root.genByteCode(node.childs[0], funcData)
 		for i := 0; i < len(node.ops); i++ {

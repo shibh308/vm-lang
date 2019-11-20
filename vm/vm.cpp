@@ -27,7 +27,7 @@ void Vm::run(std::string path){
     for(int func_idx = 0; func_idx < func_num; ++func_idx){
         var_nums[func_idx] = byte_codes[line] & ((1 << 16) - 1);
         arg_nums[func_idx] = (byte_codes[line++] >> 16) & ((1 << 16) - 1);
-        def_lines[func_idx] = byte_codes[line++] + func_num * 2 + 1;
+        def_lines[func_idx] = byte_codes[line++];
     }
     
     uint32_t st = 0;
@@ -142,9 +142,8 @@ void Vm::run(std::string path){
         else if(op_code == opIf){
             uint32_t comp = getReg1(bc);
             uint32_t label = getOption2(bc);
-            if(comp)
+            if(reg[getIdx(comp)] == 0)
                 line = label;
-            continue;
         }
         else if(op_code == opCall){
             uint32_t copy_st = getReg1(bc);
