@@ -31,7 +31,6 @@ const (
 	opIf
 	opCall
 
-	opDef
 	opReturn
 	opAssign
 
@@ -76,8 +75,6 @@ func (b byteCode) print() {
 		s = "if"
 	case opCall:
 		s = "call"
-	case opDef:
-		s = "def"
 	case opReturn:
 		s = "return"
 	case opAssign:
@@ -90,6 +87,7 @@ func (b byteCode) print() {
 		s = "???"
 	}
 	fmt.Printf("%6s ", s)
+	fmt.Printf("%3d", b.code)
 	for _, arg := range b.rand {
 		fmt.Printf(" %d", arg)
 	}
@@ -151,9 +149,6 @@ func (root *RootNode) makeOpJump(label int) {
 }
 func (root *RootNode) makeOpIf(reg int, label int) {
 	root.code = append(root.code, byteCode{code: opIf, rand: []int{reg, label}})
-}
-func (root *RootNode) makeOpDef(def int) {
-	root.code = append(root.code, byteCode{code: opDef, rand: []int{def}})
 }
 func (root *RootNode) makeOpReturn() { root.code = append(root.code, byteCode{code: opReturn}) }
 func (root *RootNode) makeOpCall(src int, dst int, def int) {
@@ -224,6 +219,7 @@ func (root *RootNode) captureVariable() error {
 				variables = append(variables, arg.name)
 			}
 		}
+		funcData.argCnt = len(variables)
 		variables = append(variables, getVariables(funcData.node.content)...)
 		funcData.varCnt = len(variables)
 		funcData.variables = variables
@@ -245,11 +241,10 @@ func (root *RootNode) useMultiRegs(size int, funcData *FuncData) int {
 	for i = 0; match < size; i++ {
 		if i >= len(root.reg) {
 			root.reg = append(root.reg, 0)
-			break
 		}
 		if root.reg[i] == 0 {
 			match++
-		} else if root.reg[i] == 1 {
+		} else {
 			match = 0
 		}
 	}
@@ -281,16 +276,14 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 	switch node := p.(type) {
 	case *FdefNode:
 		funcData.line = len(root.code)
-		root.makeOpDef(funcData.idx)
-		root.makeOpAssign(1, funcData.varCnt)
 		ret := root.genByteCode(node.content, funcData)
-		root.makeOpCopy(funcData.varCnt+2, ret)
+		root.makeOpCopy(ret, 1)
 		root.makeOpReturn()
 		return -1
 	case *CallNode:
 		s := node.name
 		callFunc := root.funcMap[s]
-		st := root.useMultiRegs(funcData.varCnt, funcData)
+		st := root.useMultiRegs(callFunc.argCnt, funcData)
 		for i, argNode := range node.args {
 			reg := root.genByteCode(argNode, funcData)
 			root.makeOpCopy(reg, st+i)
@@ -439,25 +432,30 @@ func (root *RootNode) generateByteCode() {
 	}
 	for i := 0; i < len(root.functions); i++ {
 		funcData := &root.functions[i]
-		root.reg = make([]uint8, funcData.varCnt+3)
-		for i := 0; i < funcData.varCnt+3; i++ {
+		for key, _ := range funcData.varMap {
+			funcData.varMap[key] += 4
+		}
+		root.reg = make([]uint8, funcData.varCnt+4)
+		for i := 0; i < funcData.varCnt+4; i++ {
 			root.reg[i] = 2
 		}
 		root.genByteCode(funcData.node, funcData)
+		funcData.regSize = len(root.reg)
 	}
 }
 
 func (root *RootNode) printByteCode() {
-	for _, funcData := range root.functions {
-		fmt.Printf(`"%s"  %d %d`+"\n", funcData.name, funcData.line, funcData.varCnt)
+	for i, funcData := range root.functions {
+		fmt.Printf(`%4d:  "%s"  %d %d %d`+"\n", i*2+1, funcData.name, funcData.line, funcData.regSize, funcData.argCnt)
 	}
-	for _, byteCode := range root.code {
+	for i, byteCode := range root.code {
+		fmt.Printf("%4d:  ", i+len(root.functions)*2+1)
 		byteCode.print()
 	}
 }
 
 func write(f *os.File, val uint32) {
-	err := binary.Write(f, binary.BigEndian, val)
+	err := binary.Write(f, binary.LittleEndian, val)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "binary.Write fialed: %s\n", err)
 		os.Exit(1)
@@ -472,8 +470,8 @@ func (root *RootNode) writeByteCode(filename string) {
 	}
 	write(f, uint32(len(root.functions)))
 	for _, fn := range root.functions {
+		write(f, uint32(fn.regSize)|(uint32(fn.argCnt)<<16))
 		write(f, uint32(fn.line))
-		write(f, uint32(fn.varCnt))
 	}
 	for _, byteCode := range root.code {
 		/* TODO: opExtra */
@@ -481,45 +479,45 @@ func (root *RootNode) writeByteCode(filename string) {
 		op := byteCode.code
 		switch byteCode.code {
 		// reg:0
-		case opJump, opReturn, opDef:
-			val += int(op)
-			val <<= 6
+		case opJump, opReturn:
 			if len(byteCode.rand) == 1 {
 				val += byteCode.rand[0]
 			}
+			val <<= 6
+			val += int(op)
 		// reg:1
 		case opRead, opPrint, opIf, opAssign, opGet, opSet:
-			val += int(op)
-			val <<= 6
-			val += byteCode.rand[0]
-			val <<= 9
 			if len(byteCode.rand) == 2 {
 				val += byteCode.rand[1]
 			}
+			val <<= 9
+			val += byteCode.rand[0]
+			val <<= 6
+			val += int(op)
 		// reg:2
 		case opCopy, opCall:
-			val += int(op)
-			val <<= 6
-			val += byteCode.rand[0]
-			val <<= 9
-			val += byteCode.rand[1]
-			val <<= 9
 			if len(byteCode.rand) == 3 {
 				val += byteCode.rand[2]
 			}
-		// reg:3
-		default:
-			val += int(op)
-			val <<= 6
-			val += byteCode.rand[0]
 			val <<= 9
 			val += byteCode.rand[1]
 			val <<= 9
-			val += byteCode.rand[2]
-			val <<= 9
+			val += byteCode.rand[0]
+			val <<= 6
+			val += int(op)
+		// reg:3
+		default:
 			if len(byteCode.rand) == 4 {
 				val += byteCode.rand[3]
 			}
+			val <<= 9
+			val += byteCode.rand[2]
+			val <<= 9
+			val += byteCode.rand[1]
+			val <<= 9
+			val += byteCode.rand[0]
+			val <<= 6
+			val += int(op)
 		}
 		write(f, uint32(val))
 	}

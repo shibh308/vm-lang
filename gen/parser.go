@@ -53,7 +53,7 @@ func makeFdefNode(parent PNode, tokens *[]Token, i int) (*FdefNode, int) {
 		return nil, i
 	}
 
-	if node, _i, correct := makeVars(p, tokens, i); correct {
+	if node, _i, correct := makeVars(p, tokens, i, true); correct {
 		i = _i
 		p.vars = node
 	} else {
@@ -70,7 +70,7 @@ func makeFdefNode(parent PNode, tokens *[]Token, i int) (*FdefNode, int) {
 	return p, i
 }
 
-func makeVars(parent PNode, tokens *[]Token, i int) ([]PNode, int, bool) {
+func makeVars(parent PNode, tokens *[]Token, i int, makeVar bool) ([]PNode, int, bool) {
 	var nodes []PNode
 	switch (*tokens)[i].(type) {
 	case TokenOpenBr:
@@ -95,11 +95,20 @@ func makeVars(parent PNode, tokens *[]Token, i int) ([]PNode, int, bool) {
 			firstArg = false
 		}
 
-		if node, _i := makeEqualNode(parent, tokens, i); node == nil {
-			break
+		if makeVar {
+			if node, _i := makeVarNode(parent, tokens, i); node == nil {
+				break
+			} else {
+				i = _i
+				nodes = append(nodes, node)
+			}
 		} else {
-			i = _i
-			nodes = append(nodes, node)
+			if node, _i := makeEqualNode(parent, tokens, i); node == nil {
+				break
+			} else {
+				i = _i
+				nodes = append(nodes, node)
+			}
 		}
 	}
 
@@ -421,7 +430,7 @@ func makeCallNode(parent PNode, tokens *[]Token, i int) (*CallNode, int) {
 		return nil, i
 	} else {
 		p.name = varNode.name
-		if vars, _i, correct := makeVars(p, tokens, _i); correct {
+		if vars, _i, correct := makeVars(p, tokens, _i, false); correct {
 			p.args = vars
 			i = _i
 		} else {

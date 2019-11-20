@@ -89,7 +89,9 @@ type FuncData struct {
 	line      int
 	node      *FdefNode
 	variables []string
+	argCnt    int
 	varCnt    int
+	regSize   int
 	varMap    map[string]int
 }
 
