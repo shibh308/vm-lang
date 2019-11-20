@@ -1,6 +1,8 @@
 #include <iostream>
+#include "vm.h"
 
 int main(){
-    std::cout << "Hello, World!" << std::endl;
+    Vm vm;
+    vm.run("../gen/out.scbc");
     return 0;
 }
