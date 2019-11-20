@@ -248,6 +248,9 @@ func (root *RootNode) useMultiRegs(size int, funcData *FuncData) int {
 			match = 0
 		}
 	}
+	for j := 0; j < size; j++ {
+		root.reg[i-size+j] = 1
+	}
 	return i - size
 }
 

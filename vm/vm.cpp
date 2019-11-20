@@ -154,7 +154,7 @@ void Vm::run(std::string path){
             if(reg.size() < en + var_nums[def] + 4)
                 reg.resize(en + var_nums[def] + 4);
             reg[en] = line;
-            reg[en + 2] = dst;
+            reg[en + 2] = getIdx(dst);
             reg[en + 3] = st;
             for(int i = 0; i < arg_nums[def]; ++i)
                 reg[en + i + 4] = reg[st + copy_st + i];
@@ -170,7 +170,7 @@ void Vm::run(std::string path){
             line = reg[st];
             en = st;
             st = before_st;
-            reg[st + ret_reg] = ret;
+            reg[ret_reg] = ret;
         }
         else if(op_code == opAssign){
             uint32_t dst = getReg1(bc);
