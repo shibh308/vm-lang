@@ -6,6 +6,7 @@
 #include <iterator>
 #include <fstream>
 #include <iostream>
+#include <cassert>
 
 #define opExtra 0
 #define opRead 1
@@ -43,12 +44,8 @@ class Vm{
 public:
     Vm();
     void run(std::string path);
-    uint32_t func_num;
-    std::vector<uint32_t> byte_codes;
-    std::vector<uint32_t> arg_nums;
-    std::vector<uint32_t> var_nums;
-    std::vector<uint32_t> def_lines;
-    std::vector<uint32_t> call_counts;
+    uint32_t func_num, line_num;
+    uint32_t *byte_codes, *arg_nums, *var_nums, *def_lines, *call_counts;
     
 };
 

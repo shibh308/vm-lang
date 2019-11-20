@@ -278,7 +278,7 @@ func (root *RootNode) unUseReg(i int, funcData *FuncData) {
 func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 	switch node := p.(type) {
 	case *FdefNode:
-		funcData.line = len(root.code) + 2*len(root.functions) + 1
+		funcData.line = len(root.code)
 		ret := root.genByteCode(node.content, funcData)
 		if ret == -1 {
 			_, _ = fmt.Fprintln(os.Stderr, "missing a return statement in function block")
@@ -310,7 +310,7 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 		idx := len(root.code)
 		root.makeOpIf(comp, 0)
 		root.genByteCode(node.content, funcData)
-		root.code[idx].rand[1] = len(root.code) - 1 + 2*len(root.functions) + 1
+		root.code[idx].rand[1] = len(root.code) - 1
 		return -1
 	case *StmtNode:
 		switch node.flag {
@@ -474,10 +474,10 @@ func (root *RootNode) generateByteCode() {
 
 func (root *RootNode) printByteCode() {
 	for i, funcData := range root.functions {
-		fmt.Printf(`%4d:  "%s"  %d %d %d`+"\n", i*2+1, funcData.name, funcData.line, funcData.regSize, funcData.argCnt)
+		fmt.Printf(`%4d:  "%s"  %d %d %d`+"\n", i, funcData.name, funcData.line, funcData.regSize, funcData.argCnt)
 	}
 	for i, byteCode := range root.code {
-		fmt.Printf("%4d:  ", i+len(root.functions)*2+1)
+		fmt.Printf("%4d:  ", i)
 		byteCode.print()
 	}
 }
@@ -496,10 +496,11 @@ func (root *RootNode) writeByteCode(filename string) {
 		_, _ = fmt.Fprintf(os.Stderr, "os.Create failed: %s\n", err)
 		os.Exit(1)
 	}
+	write(f, uint32(len(root.code)))
 	write(f, uint32(len(root.functions)))
 	for _, fn := range root.functions {
-		write(f, uint32(fn.regSize)|(uint32(fn.argCnt)<<16))
 		write(f, uint32(fn.line))
+		write(f, uint32(fn.regSize)|(uint32(fn.argCnt)<<16))
 	}
 	for _, byteCode := range root.code {
 		/* TODO: opExtra */

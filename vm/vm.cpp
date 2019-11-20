@@ -9,36 +9,40 @@ void Vm::run(std::string path){
         std::cerr << "failed to open binary file" << std::endl;
         exit(1);
     }
-    while(true){
-        uint32_t inp;
-        file.read(reinterpret_cast<char*>(&inp), sizeof(inp));
-        if(file.eof())
-            break;
-        byte_codes.emplace_back(inp);
-    }
-    
-    func_num = byte_codes[0];
-    arg_nums.resize(func_num);
-    var_nums.resize(func_num);
-    def_lines.resize(func_num);
-    call_counts.resize(func_num, 0);
+    file.read(reinterpret_cast<char*>(&line_num), sizeof(line_num));
+    assert(!file.eof());
+    file.read(reinterpret_cast<char*>(&func_num), sizeof(func_num));
+    assert(!file.eof());
+    var_nums = (uint32_t*)malloc(func_num * sizeof(uint32_t));
+    arg_nums = (uint32_t*)malloc(func_num * sizeof(uint32_t));
+    def_lines = (uint32_t*)malloc(func_num * sizeof(uint32_t));
+    call_counts = (uint32_t*)calloc(func_num, sizeof(uint32_t));
     call_counts[0] = 1;
-    uint32_t line = 1;
-    for(int func_idx = 0; func_idx < func_num; ++func_idx){
-        var_nums[func_idx] = byte_codes[line] & ((1 << 16) - 1);
-        arg_nums[func_idx] = (byte_codes[line++] >> 16) & ((1 << 16) - 1);
-        def_lines[func_idx] = byte_codes[line++];
+    uint32_t inp;
+    for(int i = 0; i < func_num; ++i){
+        file.read(reinterpret_cast<char*>(&inp), sizeof(inp));
+        def_lines[i] = inp;
+        file.read(reinterpret_cast<char*>(&inp), sizeof(inp));
+        var_nums[i] = inp & ((1 << 16) - 1);
+        arg_nums[i] = (inp >> 16) & ((1 << 16) - 1);
     }
     
+    byte_codes = (uint32_t*)malloc(line_num * sizeof(uint32_t));
+    for(int i = 0; i < line_num; ++i)
+        file.read(reinterpret_cast<char*>(&byte_codes[i]), sizeof(uint32_t));
+    file.read(reinterpret_cast<char*>(&inp), sizeof(uint32_t));
+    assert(file.eof());
+    
+    uint32_t line = 0;
     uint32_t st = 0;
     uint32_t en = var_nums[0] + 4;
     std::vector<int> reg(var_nums[0] + 4);
-    reg[0] = byte_codes.size();
+    reg[0] = line_num;
     reg[2] = 1;
     reg[3] = 0;
     /* TODO: argument */
     
-    while(line < byte_codes.size()){
+    while(line < line_num){
         uint32_t bc = byte_codes[line];
     
         /*

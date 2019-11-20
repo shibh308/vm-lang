@@ -24,7 +24,7 @@ main(){
 main(){
 	x = 10;
 	y = 0;
-	if(x == 0){
+	if(x == 10){
 		y = 1;
 	}
 	y;
@@ -32,15 +32,15 @@ main(){
 `
 	testCode("s2", s2)
 	s3 := `
-fibmod(n){
+fib(n){
 	if(n == 1)
 		return 1;
 	if(n == 0)
 		return 0;
-	(fibmod(n - 1) + fibmod(n - 2)) % 10000;
+	fib(n - 1) + fib(n - 2);
 }
 main(){
-	fibmod(1000);
+	fib(32);
 }
 `
 	testCode("s3", s3)
