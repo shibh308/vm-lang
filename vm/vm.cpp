@@ -62,10 +62,12 @@ void Vm::run(std::string path){
             /* TODO*/
         }
         else if(op_code == opRead){
-            /* TODO*/
+            uint32_t dst = getReg1(bc);
+            scanf("%d", &reg[getIdx(dst)]);
         }
         else if(op_code == opPrint){
-            /* TODO*/
+            uint32_t src = getReg1(bc);
+            printf("%d\n", reg[getIdx(src)]);
         }
         else if(op_code == opCopy){
             uint32_t src = getReg1(bc);
@@ -194,5 +196,4 @@ void Vm::run(std::string path){
         }
         ++line;
     }
-    std::cout << reg[1] << std::endl;
 }

@@ -290,19 +290,43 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 		return -1
 	case *CallNode:
 		s := node.name
-		callFunc, exist := root.funcMap[s]
-		if !exist {
-			_, _ = fmt.Fprintln(os.Stderr, "calling an undeclared function"+s)
-			os.Exit(1)
+		var argCnt int
+		var funcIdx int
+		builtIn := false
+		if s == "read" {
+			builtIn = true
+			argCnt = 0
+		} else if s == "print" {
+			builtIn = true
+			argCnt = 1
+		} else {
+			callFunc, exist := root.funcMap[s]
+			if !exist {
+				_, _ = fmt.Fprintf(os.Stderr, `calling an undeclared function "%s"`, s)
+				os.Exit(1)
+			}
+			argCnt = callFunc.argCnt
+			funcIdx = callFunc.idx
 		}
-		st := root.useMultiRegs(callFunc.argCnt, funcData)
+		st := root.useMultiRegs(argCnt, funcData)
 		for i, argNode := range node.args {
 			reg := root.genByteCode(argNode, funcData)
 			root.makeOpCopy(reg, st+i)
 			root.unUseReg(reg)
 		}
 		reg := root.useReg()
-		root.makeOpCall(st, reg, callFunc.idx)
+		if builtIn {
+			switch s {
+			case "read":
+				root.makeOpRead(reg)
+			case "print":
+				root.makeOpPrint(st)
+				root.unUseReg(reg)
+				reg = st
+			}
+		} else {
+			root.makeOpCall(st, reg, funcIdx)
+		}
 		for i := 0; i < len(node.args); i++ {
 			root.unUseReg(st + i)
 		}

@@ -15,7 +15,7 @@ func(a, b, c){
 main(){
 	x = 10;
 	y = 30;
-	func(x, y, x + 10) * 3;
+	print(func(x, y, x + 10) * 3);
 }
 `
 	testCode("s1", s1)
@@ -27,10 +27,11 @@ main(){
 	if(x == 10){
 		y = 1;
 	}
-	y;
+	print(y);
 }
 `
 	testCode("s2", s2)
+
 	s3 := `
 fib(n){
 	if(n == 1)
@@ -40,10 +41,18 @@ fib(n){
 	fib(n - 1) + fib(n - 2);
 }
 main(){
-	fib(32);
+	print(fib(16));
 }
 `
 	testCode("s3", s3)
+
+	s4 := `
+main(){
+	x = read() * 3;
+	print(x + read(y));
+}
+`
+	testCode("s4", s4)
 }
 
 func testCode(name string, code string) {
