@@ -104,7 +104,7 @@ type RootNode struct {
 	ParData
 }
 
-func (p *RootNode) getChilds() []PNode { return []PNode{p.prog} }
+func (root *RootNode) getChilds() []PNode { return []PNode{root.prog} }
 
 type ProgNode struct {
 	childs []PNode
