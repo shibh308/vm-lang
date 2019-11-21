@@ -58,141 +58,141 @@ void Vm::run(std::string path){
          */
         
         uint32_t op_code = getOpCode(bc);
-        if(op_code == opExtra){
-            /* TODO*/
-        }
-        else if(op_code == opRead){
-            uint32_t dst = getReg1(bc);
-            scanf("%d", &reg[getIdx(dst)]);
-        }
-        else if(op_code == opPrint){
-            uint32_t src = getReg1(bc);
-            printf("%d\n", reg[getIdx(src)]);
-        }
-        else if(op_code == opCopy){
-            uint32_t src = getReg1(bc);
-            uint32_t dst = getReg2(bc);
-            reg[getIdx(dst)] = reg[getIdx(src)];
-        }
-        else if(op_code == opAdd){
-            uint32_t src1 = getReg1(bc);
-            uint32_t src2 = getReg2(bc);
-            uint32_t dst = getReg3(bc);
-            reg[getIdx(dst)] = reg[getIdx(src1)] + reg[getIdx(src2)];
-        }
-        else if(op_code == opSub){
-            uint32_t src1 = getReg1(bc);
-            uint32_t src2 = getReg2(bc);
-            uint32_t dst = getReg3(bc);
-            reg[getIdx(dst)] = reg[getIdx(src1)] - reg[getIdx(src2)];
-        }
-        else if(op_code == opMul){
-            uint32_t src1 = getReg1(bc);
-            uint32_t src2 = getReg2(bc);
-            uint32_t dst = getReg3(bc);
-            reg[getIdx(dst)] = reg[getIdx(src1)] * reg[getIdx(src2)];
-        }
-        else if(op_code == opDiv){
-            uint32_t src1 = getReg1(bc);
-            uint32_t src2 = getReg2(bc);
-            uint32_t dst = getReg3(bc);
-            reg[getIdx(dst)] = reg[getIdx(src1)] / reg[getIdx(src2)];
-        }
-        else if(op_code == opMod){
-            uint32_t src1 = getReg1(bc);
-            uint32_t src2 = getReg2(bc);
-            uint32_t dst = getReg3(bc);
-            reg[dst] = reg[src1] % reg[src2];
-            reg[getIdx(dst)] = reg[getIdx(src1)] % reg[getIdx(src2)];
-        }
-        else if(op_code == opEq){
-            uint32_t src1 = getReg1(bc);
-            uint32_t src2 = getReg2(bc);
-            uint32_t dst = getReg3(bc);
-            reg[getIdx(dst)] = reg[getIdx(src1)] == reg[getIdx(src2)];
-        }
-        else if(op_code == opNeq){
-            uint32_t src1 = getReg1(bc);
-            uint32_t src2 = getReg2(bc);
-            uint32_t dst = getReg3(bc);
-            reg[st + dst] = reg[st + src1] != reg[st + src2];
-            reg[getIdx(dst)] = reg[getIdx(src1)] != reg[getIdx(src2)];
-        }
-        else if(op_code == opGr){
-            uint32_t src1 = getReg1(bc);
-            uint32_t src2 = getReg2(bc);
-            uint32_t dst = getReg3(bc);
-            reg[getIdx(dst)] = reg[getIdx(src1)] > reg[getIdx(src2)];
-        }
-        else if(op_code == opLe){
-            uint32_t src1 = getReg1(bc);
-            uint32_t src2 = getReg2(bc);
-            uint32_t dst = getReg3(bc);
-            reg[getIdx(dst)] = reg[getIdx(src1)] < reg[getIdx(src2)];
-        }
-        else if(op_code == opGreq){
-            uint32_t src1 = getReg1(bc);
-            uint32_t src2 = getReg2(bc);
-            uint32_t dst = getReg3(bc);
-            reg[getIdx(dst)] = reg[getIdx(src1)] >= reg[getIdx(src2)];
-        }
-        else if(op_code == opLeeq){
-            uint32_t src1 = getReg1(bc);
-            uint32_t src2 = getReg2(bc);
-            uint32_t dst = getReg3(bc);
-            reg[getIdx(dst)] = reg[getIdx(src1)] <= reg[getIdx(src2)];
-        }
-        else if(op_code == opJump){
-            uint32_t label = getOption1(bc);
-            line = label;
-            continue;
-        }
-        else if(op_code == opIf){
-            uint32_t comp = getReg1(bc);
-            uint32_t label = getOption2(bc);
-            if(reg[getIdx(comp)] == 0)
-                line = label;
-        }
-        else if(op_code == opCall){
-            uint32_t copy_st = getReg1(bc);
-            uint32_t dst = getReg2(bc);
-            uint32_t def = getOption3(bc);
-            ++call_counts[def];
-            if(regsize < en + var_nums[def] + 4){
-                auto new_reg = (uint32_t*)malloc((en + var_nums[def] + 4) * 2);
-                memcpy(new_reg, reg, sizeof(uint32_t));
-                free(reg);
-                reg = new_reg;
-            }
-            reg[en] = line;
-            reg[en + 2] = getIdx(dst);
-            reg[en + 3] = st;
-            for(int i = 0; i < arg_nums[def]; ++i)
-                reg[en + i + 4] = reg[st + copy_st + i];
-            st = en;
-            en += var_nums[def] + 4;
-            line = def_lines[def];
-            continue;
-        }
-        else if(op_code == opReturn){
-            uint32_t before_st = reg[st + 3];
-            uint32_t ret = reg[st + 1];
-            uint32_t ret_reg = reg[st + 2];
-            line = reg[st];
-            en = st;
-            st = before_st;
-            reg[ret_reg] = ret;
-        }
-        else if(op_code == opAssign){
-            uint32_t dst = getReg1(bc);
-            uint32_t val = getOption2(bc);
-            reg[getIdx(dst)] = val;
-        }
-        else if(op_code == opGet){
-            /* TODO*/
-        }
-        else if(op_code == opSet){
-            /* TODO*/
+        uint32_t src, dst, src1, src2, label, comp, copy_st, def, before_st, ret, ret_reg, val;
+        switch(op_code){
+            case opExtra:
+                /* TODO*/
+                break;
+            case opRead:
+                dst = getReg1(bc);
+                scanf("%d", &reg[getIdx(dst)]);
+                break;
+            case opPrint:
+                src = getReg1(bc);
+                printf("%d\n", reg[getIdx(src)]);
+                break;
+            case opCopy:
+                src = getReg1(bc);
+                dst = getReg2(bc);
+                reg[getIdx(dst)] = reg[getIdx(src)];
+                break;
+            case opAdd:
+                src1 = getReg1(bc);
+                src2 = getReg2(bc);
+                dst = getReg3(bc);
+                reg[getIdx(dst)] = reg[getIdx(src1)] + reg[getIdx(src2)];
+                break;
+            case opSub:
+                src1 = getReg1(bc);
+                src2 = getReg2(bc);
+                dst = getReg3(bc);
+                reg[getIdx(dst)] = reg[getIdx(src1)] - reg[getIdx(src2)];
+                break;
+            case opMul:
+                src1 = getReg1(bc);
+                src2 = getReg2(bc);
+                dst = getReg3(bc);
+                reg[getIdx(dst)] = reg[getIdx(src1)] * reg[getIdx(src2)];
+                break;
+            case opDiv:
+                src1 = getReg1(bc);
+                src2 = getReg2(bc);
+                dst = getReg3(bc);
+                reg[getIdx(dst)] = reg[getIdx(src1)] / reg[getIdx(src2)];
+            case opMod:
+                src1 = getReg1(bc);
+                src2 = getReg2(bc);
+                dst = getReg3(bc);
+                reg[getIdx(dst)] = reg[getIdx(src1)] % reg[getIdx(src2)];
+                break;
+            case opEq:
+                src1 = getReg1(bc);
+                src2 = getReg2(bc);
+                dst = getReg3(bc);
+                reg[getIdx(dst)] = reg[getIdx(src1)] == reg[getIdx(src2)];
+                break;
+            case opNeq:
+                src1 = getReg1(bc);
+                src2 = getReg2(bc);
+                dst = getReg3(bc);
+                reg[st + dst] = reg[st + src1] != reg[st + src2];
+                reg[getIdx(dst)] = reg[getIdx(src1)] != reg[getIdx(src2)];
+                break;
+            case opGr:
+                src1 = getReg1(bc);
+                src2 = getReg2(bc);
+                dst = getReg3(bc);
+                reg[getIdx(dst)] = reg[getIdx(src1)] > reg[getIdx(src2)];
+                break;
+            case opLe:
+                src1 = getReg1(bc);
+                src2 = getReg2(bc);
+                dst = getReg3(bc);
+                reg[getIdx(dst)] = reg[getIdx(src1)] < reg[getIdx(src2)];
+                break;
+            case opGreq:
+                src1 = getReg1(bc);
+                src2 = getReg2(bc);
+                dst = getReg3(bc);
+                reg[getIdx(dst)] = reg[getIdx(src1)] >= reg[getIdx(src2)];
+                break;
+            case opLeeq:
+                src1 = getReg1(bc);
+                src2 = getReg2(bc);
+                dst = getReg3(bc);
+                reg[getIdx(dst)] = reg[getIdx(src1)] <= reg[getIdx(src2)];
+                break;
+            case opJump:
+                label = getOption1(bc);
+                line = label - 1;
+                break;
+            case opIf:
+                comp = getReg1(bc);
+                label = getOption2(bc);
+                if(reg[getIdx(comp)] == 0)
+                    line = label;
+                break;
+            case opCall:
+                copy_st = getReg1(bc);
+                dst = getReg2(bc);
+                def = getOption3(bc);
+                ++call_counts[def];
+                if(regsize < en + var_nums[def] + 4){
+                    auto new_reg = (uint32_t*)malloc((en + var_nums[def] + 4) * 2);
+                    memcpy(new_reg, reg, sizeof(uint32_t));
+                    free(reg);
+                    reg = new_reg;
+                }
+                reg[en] = line;
+                reg[en + 2] = getIdx(dst);
+                reg[en + 3] = st;
+                for(int i = 0; i < arg_nums[def]; ++i)
+                    reg[en + i + 4] = reg[st + copy_st + i];
+                st = en;
+                en += var_nums[def] + 4;
+                line = def_lines[def] - 1;
+                break;
+            case opReturn:
+                before_st = reg[st + 3];
+                ret = reg[st + 1];
+                ret_reg = reg[st + 2];
+                line = reg[st];
+                en = st;
+                st = before_st;
+                reg[ret_reg] = ret;
+                break;
+            case opAssign:
+                dst = getReg1(bc);
+                val = getOption2(bc);
+                reg[getIdx(dst)] = val;
+                break;
+            case opGet:
+                /* TODO*/
+                break;
+            case opSet:
+                /* TODO*/
+                break;
+                
         }
         ++line;
     }
