@@ -532,7 +532,6 @@ func (root *RootNode) writeByteCode(filename string) {
 	}
 	write(f, uint32(len(root.functions)))
 	for _, fn := range root.functions {
-		write(f, uint32(fn.line))
 		write(f, uint32(len(fn.code)))
 		write(f, uint32(fn.regSize)|(uint32(fn.argCnt)<<16))
 		for _, byteCode := range fn.code {

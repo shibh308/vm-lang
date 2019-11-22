@@ -11,8 +11,8 @@ int main(int argc, char** argv){
         "../gen/out_s2.scbc",
         "../gen/out_s3.scbc",
         "../gen/out_s4.scbc",
-         */
-        "../out.scbc",
+        */
+        "../out.scbc"
     };
     for(auto& s : files){
         Vm vm;

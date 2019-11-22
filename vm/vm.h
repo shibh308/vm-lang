@@ -41,13 +41,25 @@
 #define getOption2(x) ((x) >> 15u)
 #define getOption3(x) ((x) >> 24u)
 
+
+struct FuncData{
+    uint32_t line_cnt, var_cnt, arg_cnt, call_cnt;
+    uint32_t* byte_codes;
+};
+
+
 class Vm{
 public:
     Vm();
     void run(std::string path);
-    uint32_t func_num, line_num, regsize;
-    uint32_t *byte_codes, *arg_nums, *var_nums, *def_lines, *call_counts, *reg;
+    void call(uint32_t func_idx, uint32_t line, uint32_t retreg);
+    void jit(uint32_t func_idx);
+    bool stackPop();
     
+    FuncData *functions;
+    uint32_t *call_stack, *reg;
+    uint32_t st, en, func_num, regsize, stacksize;
+    int stack_idx;
 };
 
 

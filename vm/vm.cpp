@@ -10,41 +10,61 @@ void Vm::run(std::string path){
         std::cerr << "failed to open binary file" << std::endl;
         exit(1);
     }
-    file.read(reinterpret_cast<char*>(&line_num), sizeof(line_num));
-    assert(!file.eof());
     file.read(reinterpret_cast<char*>(&func_num), sizeof(func_num));
+    
     assert(!file.eof());
-    var_nums = (uint32_t*)malloc(func_num * sizeof(uint32_t));
-    arg_nums = (uint32_t*)malloc(func_num * sizeof(uint32_t));
-    def_lines = (uint32_t*)malloc(func_num * sizeof(uint32_t));
-    call_counts = (uint32_t*)calloc(func_num, sizeof(uint32_t));
-    call_counts[0] = 1;
+    
+    functions = (FuncData*) malloc(func_num * sizeof(FuncData));
+    
     uint32_t inp;
+    
     for(int i = 0; i < func_num; ++i){
+        FuncData *f = &functions[i];
         file.read(reinterpret_cast<char*>(&inp), sizeof(inp));
-        def_lines[i] = inp;
+        f->line_cnt = inp;
         file.read(reinterpret_cast<char*>(&inp), sizeof(inp));
-        var_nums[i] = inp & ((1u << 16u) - 1);
-        arg_nums[i] = (inp >> 16u) & ((1u << 16u) - 1);
+        f->var_cnt = inp & ((1u << 16u) - 1);
+        f->arg_cnt = (inp >> 16u) & ((1u << 16u) - 1);
+        f->byte_codes = (uint32_t*) malloc(f->line_cnt * sizeof(uint32_t));
+        f->call_cnt = 0;
+        for(int j = 0; j < f->line_cnt; ++j)
+            file.read(reinterpret_cast<char*>(&f->byte_codes[j]), sizeof(uint32_t));
     }
     
-    byte_codes = (uint32_t*)malloc(line_num * sizeof(uint32_t));
-    for(int i = 0; i < line_num; ++i)
-        file.read(reinterpret_cast<char*>(&byte_codes[i]), sizeof(uint32_t));
     file.read(reinterpret_cast<char*>(&inp), sizeof(uint32_t));
     assert(file.eof());
     
-    uint32_t line = 0;
-    uint32_t st = 0;
-    uint32_t en = var_nums[0] + 4;
+    st = 0;
+    en = functions[0].var_cnt + 1;
     regsize = 1024;
-    reg = (uint32_t*)malloc(1024 * sizeof(uint32_t));
-    reg[0] = line_num;
-    reg[2] = 1;
-    reg[3] = 0;
-    /* TODO: argument */
+    reg = (uint32_t*) malloc(1024 * sizeof(uint32_t));
+    stacksize = 1024;
+    call_stack = (uint32_t*) malloc(1024 * sizeof(uint32_t));
     
-    while(line < line_num){
+    stack_idx = 0;
+    call_stack[0] = 0;
+    call_stack[1] = 0;
+    call_stack[2] = 0;
+    while(stackPop());
+}
+
+bool Vm::stackPop(){
+    if(stack_idx < 0)
+        return false;
+    uint32_t idx, line, retreg;
+    idx = call_stack[3 * stack_idx];
+    line = call_stack[3 * stack_idx + 1];
+    retreg = call_stack[3 * stack_idx + 2];
+    call(idx, line, retreg);
+    return true;
+}
+
+void Vm::call(uint32_t func_idx, uint32_t line, uint32_t retreg){
+    auto f = &functions[func_idx];
+    uint32_t* byte_codes = f->byte_codes;
+    ++f->call_cnt;
+    
+    while(line < f->line_cnt){
         uint32_t bc = byte_codes[line];
     
         /*
@@ -58,7 +78,7 @@ void Vm::run(std::string path){
          */
         
         uint32_t op_code = getOpCode(bc);
-        uint32_t src, dst, src1, src2, label, comp, copy_st, def, before_st, ret, ret_reg, val;
+        uint32_t src, dst, src1, src2, label, comp, copy_st, def, ret_reg, val;
         switch(op_code){
             case opExtra:
                 /* TODO*/
@@ -156,33 +176,49 @@ void Vm::run(std::string path){
                 copy_st = getReg1(bc);
                 dst = getReg2(bc);
                 def = getOption3(bc);
-                ++call_counts[def];
-                if(regsize < en + var_nums[def] + 4){
-                    uint32_t new_size = (en + var_nums[def] + 4) * 2;
+                
+                if(regsize < en + functions[def].var_cnt + 1){
+                    uint32_t new_size = (en + functions[def].var_cnt + 1) * 2;
                     auto new_reg = (uint32_t*)malloc(new_size * sizeof(uint32_t));
                     memcpy(new_reg, reg, regsize * sizeof(uint32_t));
                     regsize = new_size;
                     free(reg);
                     reg = new_reg;
                 }
-                reg[en] = line;
-                reg[en + 2] = getIdx(dst);
-                reg[en + 3] = st;
-                for(int i = 0; i < arg_nums[def]; ++i)
-                    reg[en + i + 4] = reg[st + copy_st + i];
+                
+                for(int i = 0; i < functions[def].arg_cnt; ++i)
+                    reg[en + i + 1] = reg[st + copy_st + i];
+        
                 st = en;
-                en += var_nums[def] + 4;
-                line = def_lines[def] - 1;
-                break;
+                en += functions[def].var_cnt + 1;
+        
+        
+                if(stacksize < stack_idx * 3 + 6){
+                    uint32_t new_size = (stack_idx * 3 + 6) * 2;
+                    auto new_stack = (uint32_t*)malloc(new_size * sizeof(uint32_t));
+                    memcpy(new_stack, call_stack, stacksize * sizeof(uint32_t));
+                    stacksize = new_size;
+                    free(call_stack);
+                    call_stack = new_stack;
+                }
+                call_stack[stack_idx * 3] = func_idx;
+                call_stack[stack_idx * 3 + 1] = line + 1;
+                call_stack[stack_idx * 3 + 2] = retreg;
+                call_stack[stack_idx * 3 + 3] = def;
+                call_stack[stack_idx * 3 + 4] = 0;
+                call_stack[stack_idx * 3 + 5] = dst;
+                ++stack_idx;
+                return ;
             case opReturn:
-                before_st = reg[st + 3];
-                ret = reg[st + 1];
-                ret_reg = reg[st + 2];
-                line = reg[st];
+                ret_reg = call_stack[stack_idx * 3 + 2];
+                --stack_idx;
+                def = call_stack[stack_idx * 3];
+                if(st == 0)
+                    return ;
                 en = st;
-                st = before_st;
-                reg[ret_reg] = ret;
-                break;
+                st -= (functions[def].var_cnt + 1);
+                reg[getIdx(ret_reg)] = reg[en];
+                return ;
             case opAssign:
                 dst = getReg1(bc);
                 val = getOption2(bc);
@@ -198,4 +234,7 @@ void Vm::run(std::string path){
         }
         ++line;
     }
+}
+
+void Vm::jit(uint32_t func_idx){
 }
