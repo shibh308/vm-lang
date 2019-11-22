@@ -30,5 +30,6 @@ func main() {
 	tokens := lexString(strings.TrimSpace(s))
 	root := parseTokenSlice(tokens)
 	root.generateByteCode()
+	root.printByteCode()
 	root.writeByteCode(writePath)
 }

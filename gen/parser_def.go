@@ -93,6 +93,7 @@ type FuncData struct {
 	varCnt    int
 	regSize   int
 	varMap    map[string]int
+	code      []byteCode
 }
 
 type RootNode struct {

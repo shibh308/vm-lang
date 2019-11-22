@@ -284,7 +284,7 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 			_, _ = fmt.Fprintln(os.Stderr, "missing a return statement in function block")
 			os.Exit(1)
 		}
-		root.makeOpCopy(ret, 1)
+		root.makeOpCopy(ret, 0)
 		root.unUseReg(ret)
 		root.makeOpReturn()
 		return -1
@@ -343,7 +343,7 @@ func (root *RootNode) genByteCode(p PNode, funcData *FuncData) int {
 		switch node.flag {
 		case flagReturn:
 			ret := root.genByteCode(node.content, funcData)
-			root.makeOpCopy(ret, 1)
+			root.makeOpCopy(ret, 0)
 			root.unUseReg(ret)
 			root.makeOpReturn()
 			return -1
@@ -493,24 +493,26 @@ func (root *RootNode) generateByteCode() {
 	for i := 0; i < len(root.functions); i++ {
 		funcData := &root.functions[i]
 		for key, _ := range funcData.varMap {
-			funcData.varMap[key] += 4
+			funcData.varMap[key]++
 		}
-		root.reg = make([]uint8, funcData.varCnt+4)
-		for i := 0; i < funcData.varCnt+4; i++ {
+		root.reg = make([]uint8, funcData.varCnt+1)
+		for i := 0; i < funcData.varCnt+1; i++ {
 			root.reg[i] = 2
 		}
 		root.genByteCode(funcData.node, funcData)
+		funcData.code = root.code
+		root.code = []byteCode{}
 		funcData.regSize = len(root.reg)
 	}
 }
 
 func (root *RootNode) printByteCode() {
 	for i, funcData := range root.functions {
-		fmt.Printf(`%4d:  "%s"  %d %d %d`+"\n", i, funcData.name, funcData.line, funcData.regSize, funcData.argCnt)
-	}
-	for i, byteCode := range root.code {
-		fmt.Printf("%4d:  ", i)
-		byteCode.print()
+		fmt.Printf(`%4d:  "%s"  %d %d %d`+"\n", i, funcData.name, len(funcData.code), funcData.regSize, funcData.argCnt)
+		for i, byteCode := range funcData.code {
+			fmt.Printf("%4d:  ", i)
+			byteCode.print()
+		}
 	}
 }
 
@@ -528,58 +530,58 @@ func (root *RootNode) writeByteCode(filename string) {
 		_, _ = fmt.Fprintf(os.Stderr, "os.Create failed: %s\n", err)
 		os.Exit(1)
 	}
-	write(f, uint32(len(root.code)))
 	write(f, uint32(len(root.functions)))
 	for _, fn := range root.functions {
 		write(f, uint32(fn.line))
+		write(f, uint32(len(fn.code)))
 		write(f, uint32(fn.regSize)|(uint32(fn.argCnt)<<16))
-	}
-	for _, byteCode := range root.code {
-		/* TODO: opExtra */
-		val := 0
-		op := byteCode.code
-		switch byteCode.code {
-		// reg:0
-		case opJump, opReturn:
-			if len(byteCode.rand) == 1 {
+		for _, byteCode := range fn.code {
+			/* TODO: opExtra */
+			val := 0
+			op := byteCode.code
+			switch byteCode.code {
+			// reg:0
+			case opJump, opReturn:
+				if len(byteCode.rand) == 1 {
+					val += byteCode.rand[0]
+				}
+				val <<= 6
+				val += int(op)
+			// reg:1
+			case opRead, opPrint, opIf, opAssign, opGet, opSet:
+				if len(byteCode.rand) == 2 {
+					val += byteCode.rand[1]
+				}
+				val <<= 9
 				val += byteCode.rand[0]
-			}
-			val <<= 6
-			val += int(op)
-		// reg:1
-		case opRead, opPrint, opIf, opAssign, opGet, opSet:
-			if len(byteCode.rand) == 2 {
+				val <<= 6
+				val += int(op)
+			// reg:2
+			case opCopy, opCall:
+				if len(byteCode.rand) == 3 {
+					val += byteCode.rand[2]
+				}
+				val <<= 9
 				val += byteCode.rand[1]
-			}
-			val <<= 9
-			val += byteCode.rand[0]
-			val <<= 6
-			val += int(op)
-		// reg:2
-		case opCopy, opCall:
-			if len(byteCode.rand) == 3 {
+				val <<= 9
+				val += byteCode.rand[0]
+				val <<= 6
+				val += int(op)
+			// reg:3
+			default:
+				if len(byteCode.rand) == 4 {
+					val += byteCode.rand[3]
+				}
+				val <<= 9
 				val += byteCode.rand[2]
+				val <<= 9
+				val += byteCode.rand[1]
+				val <<= 9
+				val += byteCode.rand[0]
+				val <<= 6
+				val += int(op)
 			}
-			val <<= 9
-			val += byteCode.rand[1]
-			val <<= 9
-			val += byteCode.rand[0]
-			val <<= 6
-			val += int(op)
-		// reg:3
-		default:
-			if len(byteCode.rand) == 4 {
-				val += byteCode.rand[3]
-			}
-			val <<= 9
-			val += byteCode.rand[2]
-			val <<= 9
-			val += byteCode.rand[1]
-			val <<= 9
-			val += byteCode.rand[0]
-			val <<= 6
-			val += int(op)
+			write(f, uint32(val))
 		}
-		write(f, uint32(val))
 	}
 }
