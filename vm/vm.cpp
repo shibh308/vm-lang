@@ -158,8 +158,10 @@ void Vm::run(std::string path){
                 def = getOption3(bc);
                 ++call_counts[def];
                 if(regsize < en + var_nums[def] + 4){
-                    auto new_reg = (uint32_t*)malloc((en + var_nums[def] + 4) * 2);
-                    memcpy(new_reg, reg, sizeof(uint32_t));
+                    uint32_t new_size = (en + var_nums[def] + 4) * 2;
+                    auto new_reg = (uint32_t*)malloc(new_size * sizeof(uint32_t));
+                    memcpy(new_reg, reg, regsize * sizeof(uint32_t));
+                    regsize = new_size;
                     free(reg);
                     reg = new_reg;
                 }
