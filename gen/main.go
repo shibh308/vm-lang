@@ -9,6 +9,7 @@ import (
 
 func main() {
 	arg_len := len(os.Args) - 1
+
 	if arg_len < 1 {
 		_, _ = fmt.Fprintln(os.Stderr, "missing argument")
 		os.Exit(1)

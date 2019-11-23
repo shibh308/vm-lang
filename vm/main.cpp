@@ -1,7 +1,7 @@
 #include <iostream>
 #include "vm.h"
 
-#define TEST
+// #define TEST
 
 int main(int argc, char** argv){
 #ifdef TEST

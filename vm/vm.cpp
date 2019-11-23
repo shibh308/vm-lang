@@ -23,8 +23,6 @@ void Vm::run(std::string path){
 
     uint32_t inp;
 
-    std::system(("rm " + TMPDIR + "*.so").c_str());
-
     for(int i = 0; i < func_num; ++i){
         FuncData *f = &functions[i];
         file.read(reinterpret_cast<char*>(&inp), sizeof(inp));
@@ -80,13 +78,14 @@ void Vm::call(uint32_t func_idx, uint32_t line){
     auto f = &functions[func_idx];
     uint32_t* byte_codes = f->byte_codes;
 
-    if(f->make_jit && f->func_ptr == nullptr)
-        f->func_ptr = dlopen((TMPDIR + func_prefix + std::to_string(func_idx) + ".so").c_str(), RTLD_LAZY);
+#ifdef JIT
+    if(f->make_jit && f->func == nullptr) {
+        auto func_ptr = dlopen((TMPDIR + func_prefix + std::to_string(func_idx) + ".so").c_str(), RTLD_LAZY);
+        *(void**) (&f->func) = dlsym(func_ptr, (func_prefix + std::to_string(func_idx)).c_str());
+    }
 
-    void (*func)(Vm*, uint32_t);
-    if(f->make_jit && f->func_ptr != nullptr){
-        *(void**)(&func) = dlsym(f->func_ptr, (func_prefix + std::to_string(func_idx)).c_str());
-        func(this, line);
+    if(f->make_jit && f->func != nullptr){
+        f->func(this, line);
         return ;
     }
     else if(++f->call_cnt >= 5 && !f->make_jit){
@@ -99,6 +98,7 @@ void Vm::call(uint32_t func_idx, uint32_t line){
             jit_running = true;
         }
     }
+#endif
 
     while(line < f->line_cnt){
         uint32_t bc = byte_codes[line];

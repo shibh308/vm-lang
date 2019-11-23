@@ -12,7 +12,7 @@
 #include <thread>
 #include <queue>
 
-#define TMPDIR std::string("./../jit/")
+#define TMPDIR std::string("./jit/")
 
 #define opExtra 0
 #define opRead 1
@@ -48,14 +48,19 @@
 
 #define OUT(x) file << x << std::endl
 
+#define JIT
+
 const std::string func_prefix = "func_";
 const std::string label_prefix = "line_";
+
+
+class Vm;
 
 struct FuncData{
     uint32_t line_cnt, var_cnt, arg_cnt, call_cnt;
     uint32_t* byte_codes;
     bool make_jit;
-    void *func_ptr;
+    void (*func)(Vm*, uint32_t);
 };
 
 
