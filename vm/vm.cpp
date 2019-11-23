@@ -3,6 +3,11 @@
 Vm::Vm(){
 }
 
+Vm::~Vm(){
+    if(jit_thread.joinable())
+        jit_thread.join();
+}
+
 void Vm::run(std::string path){
     std::ifstream file(path, std::ios::in | std::ifstream::binary);
     
@@ -15,7 +20,7 @@ void Vm::run(std::string path){
     assert(!file.eof());
     
     functions = (FuncData*) malloc(func_num * sizeof(FuncData));
-    
+
     uint32_t inp;
     
     for(int i = 0; i < func_num; ++i){
@@ -27,6 +32,7 @@ void Vm::run(std::string path){
         f->arg_cnt = (inp >> 16u) & ((1u << 16u) - 1);
         f->byte_codes = (uint32_t*) malloc(f->line_cnt * sizeof(uint32_t));
         f->call_cnt = 0;
+        f->make_jit = false;
         for(int j = 0; j < f->line_cnt; ++j)
             file.read(reinterpret_cast<char*>(&f->byte_codes[j]), sizeof(uint32_t));
     }
@@ -54,16 +60,34 @@ bool Vm::stackPop(){
     uint32_t idx, line, retreg;
     idx = call_stack[3 * stack_idx];
     line = call_stack[3 * stack_idx + 1];
-    retreg = call_stack[3 * stack_idx + 2];
-    call(idx, line, retreg);
+    call(idx, line);
     return true;
 }
 
-void Vm::call(uint32_t func_idx, uint32_t line, uint32_t retreg){
+void Vm::call(uint32_t func_idx, uint32_t line){
     auto f = &functions[func_idx];
     uint32_t* byte_codes = f->byte_codes;
-    ++f->call_cnt;
-    
+
+    if(f->make_jit && f->func_ptr == nullptr)
+        f->func_ptr = dlopen((TMPDIR + func_prefix + std::to_string(func_idx) + ".so").c_str(), RTLD_LAZY);
+
+    void (*func)(Vm*, uint32_t);
+    if(f->make_jit && f->func_ptr != nullptr){
+        *(void**)(&func) = dlsym(f->func_ptr, (func_prefix + std::to_string(func_idx)).c_str());
+        func(this, line);
+        return ;
+    }
+    else if(++f->call_cnt >= 5 && !f->make_jit){
+        f->make_jit = true;
+        jit_queue.emplace(func_idx);
+        if(!jit_running) {
+            if(jit_thread.joinable())
+                jit_thread.join();
+            jit_thread = std::thread([this](){jitCheck();});
+            jit_running = true;
+        }
+    }
+
     while(line < f->line_cnt){
         uint32_t bc = byte_codes[line];
     
@@ -85,7 +109,8 @@ void Vm::call(uint32_t func_idx, uint32_t line, uint32_t retreg){
                 break;
             case opRead:
                 dst = getReg1(bc);
-                scanf("%d", &reg[getIdx(dst)]);
+                reg[getIdx(dst)] = 10;
+                // scanf("%d", &reg[getIdx(dst)]);
                 break;
             case opPrint:
                 src = getReg1(bc);
@@ -203,7 +228,6 @@ void Vm::call(uint32_t func_idx, uint32_t line, uint32_t retreg){
                 }
                 call_stack[stack_idx * 3] = func_idx;
                 call_stack[stack_idx * 3 + 1] = line + 1;
-                call_stack[stack_idx * 3 + 2] = retreg;
                 call_stack[stack_idx * 3 + 3] = def;
                 call_stack[stack_idx * 3 + 4] = 0;
                 call_stack[stack_idx * 3 + 5] = dst;
@@ -236,5 +260,146 @@ void Vm::call(uint32_t func_idx, uint32_t line, uint32_t retreg){
     }
 }
 
+void Vm::jitCheck(){
+    std::cout << "running" << std::endl;
+    while(!jit_queue.empty()) {
+        jit(jit_queue.front());
+        jit_queue.pop();
+    }
+    jit_running = false;
+}
+
 void Vm::jit(uint32_t func_idx){
+    std::string filepath = TMPDIR + func_prefix + std::to_string(func_idx) + ".cpp";
+
+    std::ofstream file(filepath);
+    if(file.fail()) {
+        std::cerr << "failed to open file" << std::endl;
+        exit(1);
+    }
+
+    file << "#include \"jit.h\"" << std::endl;
+    file << "void " << func_prefix << func_idx << "(Vm* vm, uint32_t line){" << std::endl;
+
+    auto f = functions[func_idx];
+    uint32_t* byte_codes = f.byte_codes;
+
+    OUT("switch(line){");
+    for(uint32_t line = 0; line < f.line_cnt; ++line){
+        OUT("case " << line << ":");
+        OUT("goto " << label_prefix << line << ";");
+    }
+    OUT("}");
+
+    for(uint32_t line = 0; line < f.line_cnt; ++line){
+        uint32_t bc = byte_codes[line];
+        uint32_t op_code = getOpCode(bc);
+        uint32_t reg1 = getReg1(bc);
+        uint32_t reg2 = getReg2(bc);
+        uint32_t reg3 = getReg3(bc);
+        uint32_t option1 = getOption1(bc);
+        uint32_t option2 = getOption2(bc);
+        uint32_t option3 = getOption3(bc);
+        file << label_prefix << line << ":" << std::endl;
+        switch(op_code){
+            case opRead:
+                OUT("scanf(\"%d\", &GETVAL(" << reg1 << "));");
+                break;
+            case opPrint:
+                OUT("printf(\"%d\", GETVAL(" << reg1 << "));");
+                break;
+            case opCopy:
+                OUT("GETVAL(" << reg2 << ") = GETVAL(" << reg1 << ");");
+                break;
+            case opAdd:
+                OUT("GETVAL(" << reg3 << ") = GETVAL(" << reg1 << ") + GETVAL(" << reg2 << ");");
+                break;
+            case opSub:
+                OUT("GETVAL(" << reg3 << ") = GETVAL(" << reg1 << ") - GETVAL(" << reg2 << ");");
+                break;
+            case opMul:
+                OUT("GETVAL(" << reg3 << ") = GETVAL(" << reg1 << ") * GETVAL(" << reg2 << ");");
+                break;
+            case opDiv:
+                OUT("GETVAL(" << reg3 << ") = GETVAL(" << reg1 << ") / GETVAL(" << reg2 << ");");
+                break;
+            case opMod:
+                OUT("GETVAL(" << reg3 << ") = GETVAL(" << reg1 << ") % GETVAL(" << reg2 << ");");
+                break;
+            case opEq:
+                OUT("GETVAL(" << reg3 << ") = GETVAL(" << reg1 << ") == GETVAL(" << reg2 << ");");
+                break;
+            case opNeq:
+                OUT("GETVAL(" << reg3 << ") = GETVAL(" << reg1 << ") != GETVAL(" << reg2 << ");");
+                break;
+            case opGr:
+                OUT("GETVAL(" << reg3 << ") = GETVAL(" << reg1 << ") > GETVAL(" << reg2 << ");");
+                break;
+            case opLe:
+                OUT("GETVAL(" << reg3 << ") = GETVAL(" << reg1 << ") < GETVAL(" << reg2 << ");");
+                break;
+            case opGreq:
+                OUT("GETVAL(" << reg3 << ") = GETVAL(" << reg1 << ") >= GETVAL(" << reg2 << ");");
+                break;
+            case opLeeq:
+                OUT("GETVAL(" << reg3 << ") = GETVAL(" << reg1 << ") <= GETVAL(" << reg2 << ");");
+                break;
+            case opJump:
+                OUT("goto " << label_prefix << option1 << ";");
+                break;
+            case opIf:
+                OUT("if(!GETVAL(" << reg1 << ")) goto " << label_prefix << option2 << ";");
+                break;
+            case opCall:
+                OUT("if(vm->regsize < vm->en + vm->functions[" << option3 << "].var_cnt + 1){");
+                OUT("uint32_t new_size = (vm->en + vm->functions[" << option3 << "].var_cnt + 1) * 2;");
+                OUT("auto new_reg = (uint32_t*)malloc(new_size * sizeof(uint32_t));");
+                OUT("memcpy(new_reg, vm->reg, vm->regsize * sizeof(uint32_t));");
+                OUT("vm->regsize = new_size;");
+                OUT("free(vm->reg);");
+                OUT("vm->reg = new_reg;");
+                OUT("}");
+                OUT("for(int i = 0; i < vm->functions[" << option3 << "].arg_cnt; ++i)");
+                OUT("vm->reg[vm->en + i + 1] = vm->reg[vm->st +" << reg1 << "+ i];");
+                OUT("vm->st = vm->en;");
+                OUT("vm->en += vm->functions[" << option3 << "].var_cnt + 1;");
+                OUT("if(vm->stacksize < vm->stack_idx * 3 + 6){");
+                OUT("uint32_t new_size = (vm->stack_idx * 3 + 6) * 2;");
+                OUT("auto new_stack = (uint32_t*)malloc(new_size * sizeof(uint32_t));");
+                OUT("memcpy(new_stack, vm->call_stack, vm->stacksize * sizeof(uint32_t));");
+                OUT("vm->stacksize = new_size;");
+                OUT("free(vm->call_stack);");
+                OUT("vm->call_stack = new_stack;");
+                OUT("}");
+                OUT("vm->call_stack[vm->stack_idx * 3] = " << func_idx << ";");
+                OUT("vm->call_stack[vm->stack_idx * 3 + 1] = " << line + 1 << ";");
+                OUT("vm->call_stack[vm->stack_idx * 3 + 3] = " << option3 << ";");
+                OUT("vm->call_stack[vm->stack_idx * 3 + 4] = " << 0 << ";");
+                OUT("vm->call_stack[vm->stack_idx * 3 + 5] = " << reg2 << ";");
+                OUT("++vm->stack_idx;");
+                OUT("return ;");
+                break;
+            case opReturn:
+                OUT("--vm->stack_idx;");
+                OUT("if(vm->st == 0)return ;");
+                OUT("vm->en = vm->st;");
+                OUT("vm->st -= (vm->functions[vm->call_stack[vm->stack_idx * 3 + 3]].var_cnt + 1);");
+                OUT("GETVAL(vm->call_stack[vm->stack_idx * 3 + 5]) = vm->reg[vm->en];");
+                OUT("return ;");
+                break;
+            case opAssign:
+                OUT("GETVAL(" << reg1 << ") = " << option2 << ";");
+                break;
+            default:
+                std::cerr << "unimplemented opcode " << op_code << std::endl;
+                std::exit(1);
+        }
+    }
+
+    file << "}" << std::endl;
+
+    std::string cmd = "g++ " + filepath + " -shared -fPIC -o " + TMPDIR + func_prefix + std::to_string(func_idx) + ".so";
+    std::cout << cmd << std::endl;
+    std::system(cmd.c_str());
+
 }

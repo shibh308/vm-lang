@@ -1,13 +1,18 @@
 #ifndef UNTITLED_VM_H
 #define UNTITLED_VM_H
 
-#include <string.h>
+#include <cstring>
+#include <dlfcn.h>
 #include <vector>
 #include <string>
 #include <iterator>
 #include <fstream>
 #include <iostream>
 #include <cassert>
+#include <thread>
+#include <queue>
+
+#define TMPDIR std::string("./../jit/")
 
 #define opExtra 0
 #define opRead 1
@@ -41,21 +46,32 @@
 #define getOption2(x) ((x) >> 15u)
 #define getOption3(x) ((x) >> 24u)
 
+#define OUT(x) file << x << std::endl
+
+const std::string func_prefix = "func_";
+const std::string label_prefix = "line_";
 
 struct FuncData{
     uint32_t line_cnt, var_cnt, arg_cnt, call_cnt;
     uint32_t* byte_codes;
+    bool make_jit;
+    void *func_ptr;
 };
 
 
 class Vm{
 public:
     Vm();
+    ~Vm();
     void run(std::string path);
-    void call(uint32_t func_idx, uint32_t line, uint32_t retreg);
+    void call(uint32_t func_idx, uint32_t line);
+    void jitCheck();
     void jit(uint32_t func_idx);
     bool stackPop();
-    
+
+    bool jit_running = false;
+    std::queue<int> jit_queue;
+    std::thread jit_thread;
     FuncData *functions;
     uint32_t *call_stack, *reg;
     uint32_t st, en, func_num, regsize, stacksize;
