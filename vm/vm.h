@@ -61,6 +61,10 @@ struct FuncData{
 
 class Vm{
 public:
+    FuncData *functions;
+    uint32_t *call_stack, *reg;
+    uint32_t st, en, func_num, regsize, stacksize;
+    int stack_idx;
     Vm();
     ~Vm();
     void run(std::string path);
@@ -72,10 +76,6 @@ public:
     bool jit_running = false;
     std::queue<int> jit_queue;
     std::thread jit_thread;
-    FuncData *functions;
-    uint32_t *call_stack, *reg;
-    uint32_t st, en, func_num, regsize, stacksize;
-    int stack_idx;
 };
 
 

@@ -22,7 +22,9 @@ void Vm::run(std::string path){
     functions = (FuncData*) malloc(func_num * sizeof(FuncData));
 
     uint32_t inp;
-    
+
+    std::system(("rm " + TMPDIR + "*.so").c_str());
+
     for(int i = 0; i < func_num; ++i){
         FuncData *f = &functions[i];
         file.read(reinterpret_cast<char*>(&inp), sizeof(inp));
@@ -35,8 +37,18 @@ void Vm::run(std::string path){
         f->make_jit = false;
         for(int j = 0; j < f->line_cnt; ++j)
             file.read(reinterpret_cast<char*>(&f->byte_codes[j]), sizeof(uint32_t));
+
+        /*
+        if(i) {
+            std::string filepath = TMPDIR + func_prefix + std::to_string(i) + ".cpp";
+            std::string cmd =
+                    "g++ " + filepath + " -shared -fPIC -o " + TMPDIR + func_prefix + std::to_string(i) + ".so";
+            std::system(cmd.c_str());
+            f->make_jit = true;
+        }
+         */
     }
-    
+
     file.read(reinterpret_cast<char*>(&inp), sizeof(uint32_t));
     assert(file.eof());
     
@@ -57,7 +69,7 @@ void Vm::run(std::string path){
 bool Vm::stackPop(){
     if(stack_idx < 0)
         return false;
-    uint32_t idx, line, retreg;
+    uint32_t idx, line;
     idx = call_stack[3 * stack_idx];
     line = call_stack[3 * stack_idx + 1];
     call(idx, line);
@@ -109,8 +121,8 @@ void Vm::call(uint32_t func_idx, uint32_t line){
                 break;
             case opRead:
                 dst = getReg1(bc);
-                reg[getIdx(dst)] = 10;
-                // scanf("%d", &reg[getIdx(dst)]);
+                // reg[getIdx(dst)] = 10;
+                scanf("%d", &reg[getIdx(dst)]);
                 break;
             case opPrint:
                 src = getReg1(bc);
@@ -261,7 +273,6 @@ void Vm::call(uint32_t func_idx, uint32_t line){
 }
 
 void Vm::jitCheck(){
-    std::cout << "running" << std::endl;
     while(!jit_queue.empty()) {
         jit(jit_queue.front());
         jit_queue.pop();
@@ -279,6 +290,7 @@ void Vm::jit(uint32_t func_idx){
     }
 
     file << "#include \"jit.h\"" << std::endl;
+    file << "extern \"C\"{" << std::endl;
     file << "void " << func_prefix << func_idx << "(Vm* vm, uint32_t line){" << std::endl;
 
     auto f = functions[func_idx];
@@ -348,7 +360,7 @@ void Vm::jit(uint32_t func_idx){
                 OUT("goto " << label_prefix << option1 << ";");
                 break;
             case opIf:
-                OUT("if(!GETVAL(" << reg1 << ")) goto " << label_prefix << option2 << ";");
+                OUT("if(!GETVAL(" << reg1 << ")) goto " << label_prefix << option2 + 1 << ";");
                 break;
             case opCall:
                 OUT("if(vm->regsize < vm->en + vm->functions[" << option3 << "].var_cnt + 1){");
@@ -360,7 +372,7 @@ void Vm::jit(uint32_t func_idx){
                 OUT("vm->reg = new_reg;");
                 OUT("}");
                 OUT("for(int i = 0; i < vm->functions[" << option3 << "].arg_cnt; ++i)");
-                OUT("vm->reg[vm->en + i + 1] = vm->reg[vm->st +" << reg1 << "+ i];");
+                OUT("vm->reg[vm->en + i + 1] = vm->reg[vm->st + " << reg1 << " + i];");
                 OUT("vm->st = vm->en;");
                 OUT("vm->en += vm->functions[" << option3 << "].var_cnt + 1;");
                 OUT("if(vm->stacksize < vm->stack_idx * 3 + 6){");
@@ -383,7 +395,7 @@ void Vm::jit(uint32_t func_idx){
                 OUT("--vm->stack_idx;");
                 OUT("if(vm->st == 0)return ;");
                 OUT("vm->en = vm->st;");
-                OUT("vm->st -= (vm->functions[vm->call_stack[vm->stack_idx * 3 + 3]].var_cnt + 1);");
+                OUT("vm->st -= (vm->functions[vm->call_stack[vm->stack_idx * 3]].var_cnt + 1);");
                 OUT("GETVAL(vm->call_stack[vm->stack_idx * 3 + 5]) = vm->reg[vm->en];");
                 OUT("return ;");
                 break;
@@ -397,9 +409,9 @@ void Vm::jit(uint32_t func_idx){
     }
 
     file << "}" << std::endl;
+    file << "}" << std::endl;
 
     std::string cmd = "g++ " + filepath + " -shared -fPIC -o " + TMPDIR + func_prefix + std::to_string(func_idx) + ".so";
-    std::cout << cmd << std::endl;
     std::system(cmd.c_str());
 
 }
